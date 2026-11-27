@@ -70,6 +70,12 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space:
 .sig p { margin: 0; font-size: 12.5px; color: var(--muted); }
 ul.rules { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 13px; }
 .err { color: var(--bad); font-size: 13px; }
+.period { display: grid; gap: 8px; }
+.prow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.prow label { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.period select { font: inherit; font-size: 14px; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 8px; max-width: 100%; }
+#periodSel { flex: 1; min-width: 0; font-weight: 600; }
+.period button { font: inherit; font-size: 13px; font-weight: 600; color: #fff; background: var(--accent); border: 0; border-radius: 8px; padding: 8px 14px; }
 .empty { color: var(--muted); font-size: 13px; padding: 20px 0; text-align: center; }
 a { color: var(--accent); }
 </style>
@@ -95,6 +101,16 @@ a { color: var(--accent); }
 
 <main>
   <div id="error" class="err" hidden></div>
+
+  <div class="card period" id="periodBar">
+    <div class="prow"><label for="periodSel">Period</label><select id="periodSel" aria-label="Period"></select></div>
+    <div class="prow" id="customRow" hidden>
+      <label>From <select id="fromSel" aria-label="From month"></select></label>
+      <label>To <select id="toSel" aria-label="To month"></select></label>
+      <button type="button" id="applyRange">Show</button>
+    </div>
+    <p class="note" id="periodNote"></p>
+  </div>
 
   <section id="overview">
     <div class="kpis" id="kpis"></div>
@@ -254,8 +270,9 @@ const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','
 
 /* ---------- storage ---------- */
 const KEY = 'gcm_store_v1';
-let store = {annual:{}, monthly:{}, partners:null, names:null, updated:null};
+let store = {annual:{}, monthly:{}, partnersBy:{}, names:null, updated:null};
 try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.annual) store = Object.assign(store, s); } catch (e) {}
+if (store.partners && store.partners.year) { store.partnersBy[store.partners.year] = store.partners.rows; delete store.partners; }
 function save() { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) {} }
 
 /* ---------- networking (through the Android app, or fetch in a browser) ---------- */
@@ -289,28 +306,13 @@ function pack(rows) {
 }
 const hasData = (p) => !!(p && p.M && p.M['8703'] && p.M['8703'].v > 0);
 
-/* ---------- sync ---------- */
+/* ---------- downloading ---------- */
 let busy = false;
-async function sync(force) {
-  if (busy) return; busy = true;
+async function runJobs(jobs) {
+  if (busy || !jobs.length) return null;
+  busy = true;
   const btn = document.getElementById('refresh'); btn.disabled = true;
   showError('');
-  const now = new Date(), cy = now.getFullYear(), cm = now.getMonth() + 1;
-  const jobs = [];
-  for (let y = 2019; y <= cy - 1; y++) {
-    if (!hasData(store.annual[y]) || (force && y >= cy - 2)) jobs.push({kind: 'A', y});
-  }
-  const startYear = cm <= 3 ? cy - 2 : cy - 1;
-  for (let y = startYear; y <= cy; y++) {
-    for (let m = 1; m <= 12; m++) {
-      if (y === cy && m >= cm) break;
-      const k = y + String(m).padStart(2, '0');
-      const recent = (cy * 12 + cm) - (y * 12 + m) <= 4;
-      if (!hasData(store.monthly[k]) || (force && recent)) jobs.push({kind: 'M', k});
-    }
-  }
-  if (!store.names) jobs.push({kind: 'N'});
-  jobs.push({kind: 'P'});
   let done = 0, failed = null;
   setBar(0.02);
   for (const job of jobs) {
@@ -330,23 +332,46 @@ async function sync(force) {
         (j.results || []).forEach((r) => { names[r.id] = {n: r.text, g: !!r.isGroup}; });
         store.names = names;
       } else if (job.kind === 'P') {
-        const y = latestFullYear();
-        if (y && (force || !store.partners || store.partners.year !== y)) {
+        const y = job.y || latestFullYear();
+        if (y) {
           setStatus('Downloading countries for ' + y + '…');
           const rows = await trade('A', y, '&cmdCode=8703');
-          store.partners = {year: y, rows: rows.filter((r) => r.partnerCode !== 0).map((r) => ({f: r.flowCode, c: r.partnerCode, q: r.qty || 0, v: r.primaryValue || 0}))};
+          store.partnersBy[y] = rows.filter((r) => r.partnerCode !== 0).map((r) => ({f: r.flowCode, c: r.partnerCode, q: r.qty || 0, v: r.primaryValue || 0}));
         }
       }
       save();
     } catch (e) { failed = e; break; }
     done++; setBar(done / jobs.length);
-    if (job.kind === 'A' || done % 4 === 0) render();
+    if (done < jobs.length && (job.kind === 'A' || done % 4 === 0)) render();
   }
-  if (!failed) { store.updated = new Date().toISOString(); save(); }
   setBar(0);
   btn.disabled = false; busy = false;
   render();
   if (failed) showError(failed.message + (hasAny() ? ' Showing saved data.' : ''));
+  return failed;
+}
+async function sync(force) {
+  if (busy) return;
+  const now = new Date(), cy = now.getFullYear(), cm = now.getMonth() + 1;
+  const jobs = [];
+  for (let y = 2018; y <= cy - 1; y++) {
+    if (!hasData(store.annual[y]) || (force && y >= cy - 2)) jobs.push({kind: 'A', y});
+  }
+  const startYear = cm <= 3 ? cy - 2 : cy - 1;
+  for (let y = startYear; y <= cy; y++) {
+    for (let m = 1; m <= 12; m++) {
+      if (y === cy && m >= cm) break;
+      const k = y + String(m).padStart(2, '0');
+      const recent = (cy * 12 + cm) - (y * 12 + m) <= 4;
+      if (!hasData(store.monthly[k]) || (force && recent)) jobs.push({kind: 'M', k});
+    }
+  }
+  if (!store.names) jobs.push({kind: 'N'});
+  const fy = latestFullYear();
+  if (force || !fy || !store.partnersBy[fy]) jobs.push({kind: 'P'});
+  triedM.clear(); triedP.clear();
+  const failed = await runJobs(jobs);
+  if (!failed) { store.updated = new Date().toISOString(); save(); render(); }
 }
 function hasAny() { return Object.keys(store.monthly).length > 0 || Object.keys(store.annual).length > 0; }
 
@@ -369,21 +394,102 @@ function tot(p, f) { if (!p) return {q: 0, v: 0}; const t = p[f]['8703']; if (t)
 function grp(p, f, g) { const o = {q: 0, v: 0}; if (!p) return o; g.codes.forEach((c) => { const x = p[f][c]; if (x) { o.q += x.q; o.v += x.v; } }); return o; }
 function stackOf(p, sid) { return GROUPS.filter((g) => g.stack === sid).reduce((a, g) => a + grp(p, 'M', g).q, 0); }
 
-/* The current comparison window: latest year's months so far vs the same months a year earlier. */
-function windowInfo() {
+/* ---------- periods ---------- */
+let sel = {mode: 'latest'};
+try { const v = JSON.parse(localStorage.getItem('gcm_period')); if (v && v.mode) sel = v; } catch (e) {}
+function saveSel() { try { localStorage.setItem('gcm_period', JSON.stringify(sel)); } catch (e) {} }
+const triedM = new Set(), triedP = new Set();
+const MAX_MONTHS = 36;
+function mk(y, m) { return y + String(m).padStart(2, '0'); }
+function addM(k, n) { let y = +k.slice(0, 4); let m = +k.slice(4) - 1 + n; y += Math.floor(m / 12); m = ((m % 12) + 12) % 12; return mk(y, m + 1); }
+function keysBetween(a, b) { const out = []; for (let k = a; k <= b && out.length < 400; k = addM(k, 1)) out.push(k); return out; }
+function mLabel(k) { return MON[+k.slice(4) - 1] + ' ' + k.slice(0, 4); }
+function rangeLabel(a, b) {
+  if (a === b) return mLabel(a);
+  if (a.slice(0, 4) === b.slice(0, 4)) return (a.slice(4) === '01' && b.slice(4) === '12') ? a.slice(0, 4) : MON[+a.slice(4) - 1] + '–' + MON[+b.slice(4) - 1] + ' ' + a.slice(0, 4);
+  return mLabel(a) + ' – ' + mLabel(b);
+}
+/* Latest year's months so far vs the same months a year earlier. */
+function latestWindow() {
   const lm = latestMonth();
   if (!lm) {
     const fy = latestFullYear(); if (!fy) return null;
-    return {label: String(fy), prevLabel: String(fy - 1), cur: yearData(fy), prev: yearData(fy - 1), year: fy, full: true};
+    return {label: String(fy), prevLabel: String(fy - 1), cur: yearData(fy), prev: yearData(fy - 1), year: fy, full: true, missing: []};
   }
   const y = +lm.slice(0, 4), m = +lm.slice(4);
   const cur = monthsOf(y, m), prev = monthsOf(y - 1, m);
   if (m === 12 || !cur) {
-    return {label: String(y), prevLabel: String(y - 1), cur: yearData(y), prev: yearData(y - 1), year: y, full: true};
+    return {label: String(y), prevLabel: String(y - 1), cur: yearData(y), prev: yearData(y - 1), year: y, full: true, missing: []};
   }
   const span = m === 1 ? 'Jan' : 'Jan–' + MON[m - 1];
-  return {label: span + ' ' + y, prevLabel: span + ' ' + (y - 1), cur: sumP(cur), prev: prev ? sumP(prev) : null, year: y, month: m, full: false};
+  return {label: span + ' ' + y, prevLabel: span + ' ' + (y - 1), cur: sumP(cur), prev: prev ? sumP(prev) : null, year: y, month: m, full: false, missing: []};
 }
+function rangeWindow(a, b) {
+  const ks = keysBetween(a, b), pk = ks.map((k) => addM(k, -12));
+  const missing = ks.concat(pk).filter((k) => !hasData(store.monthly[k]));
+  const cur = ks.every((k) => hasData(store.monthly[k])) ? sumP(ks.map((k) => store.monthly[k])) : null;
+  const prev = pk.every((k) => hasData(store.monthly[k])) ? sumP(pk.map((k) => store.monthly[k])) : null;
+  return {label: rangeLabel(a, b), prevLabel: rangeLabel(pk[0], pk[pk.length - 1]), cur, prev, year: +b.slice(0, 4), full: false, missing, range: [a, b]};
+}
+function clampRange(a, b) {
+  const lm = latestMonth();
+  if (b > lm) b = lm;
+  if (a > b) { const t = a; a = b; b = t; }
+  if (a < '201901') a = '201901';
+  if (keysBetween(a, b).length > MAX_MONTHS) a = addM(b, -(MAX_MONTHS - 1));
+  return [a, b];
+}
+function windowInfo() {
+  const lm = latestMonth();
+  if (sel.mode === 'year' && yearData(sel.year)) {
+    const y = sel.year;
+    return {label: String(y), prevLabel: String(y - 1), cur: yearData(y), prev: yearData(y - 1), year: y, full: true, missing: []};
+  }
+  if (sel.mode === 'l12' && lm) return rangeWindow(addM(lm, -11), lm);
+  if (sel.mode === 'range' && sel.from && sel.to && lm) { const [a, b] = clampRange(sel.from, sel.to); return rangeWindow(a, b); }
+  return latestWindow();
+}
+function partnerYear() { return sel.mode === 'year' ? sel.year : latestFullYear(); }
+
+function fillPeriodControls() {
+  const lm = latestMonth();
+  const ps = document.getElementById('periodSel');
+  const lw = latestWindow();
+  const opts = [['latest', 'Latest' + (lw ? ': ' + lw.label : '')]];
+  if (lm) opts.push(['l12', 'Last 12 months']);
+  const fy = latestFullYear();
+  if (fy) for (let y = fy; y >= 2019; y--) if (yearData(y)) opts.push(['y' + y, 'Year ' + y]);
+  if (lm) opts.push(['range', 'Choose months…']);
+  const sig = opts.map((o) => o.join(':')).join('|');
+  if (ps.dataset.sig !== sig) { ps.replaceChildren(...opts.map(([v, t]) => new Option(t, v))); ps.dataset.sig = sig; }
+  ps.value = sel.mode === 'year' ? 'y' + sel.year : sel.mode;
+  if (ps.selectedIndex < 0) ps.value = 'latest';
+  const cr = document.getElementById('customRow');
+  cr.hidden = sel.mode !== 'range';
+  if (lm) {
+    const fs = document.getElementById('fromSel'), ts = document.getElementById('toSel');
+    if (fs.dataset.sig !== lm) {
+      const ks = keysBetween('201901', lm).reverse();
+      fs.replaceChildren(...ks.map((k) => new Option(mLabel(k), k)));
+      ts.replaceChildren(...ks.map((k) => new Option(mLabel(k), k)));
+      fs.dataset.sig = lm; ts.dataset.sig = lm;
+    }
+    fs.value = sel.from || addM(lm, -5);
+    ts.value = sel.to || lm;
+  }
+}
+document.getElementById('periodSel').addEventListener('change', (e) => {
+  const v = e.target.value, lm = latestMonth();
+  if (v === 'latest' || v === 'l12') sel = {mode: v};
+  else if (v.charAt(0) === 'y') sel = {mode: 'year', year: +v.slice(1)};
+  else if (v === 'range') sel = {mode: 'range', from: sel.from || (lm ? addM(lm, -5) : ''), to: sel.to || lm || ''};
+  saveSel(); render();
+});
+document.getElementById('applyRange').addEventListener('click', () => {
+  const [a, b] = clampRange(document.getElementById('fromSel').value, document.getElementById('toSel').value);
+  sel = {mode: 'range', from: a, to: b};
+  saveSel(); render();
+});
 
 /* ---------- formatting ---------- */
 const fN = (n) => n == null || isNaN(n) ? '–' : Math.round(n).toLocaleString('en-US');
@@ -498,17 +604,33 @@ function stackChart(box, cats, rows) {
 
 /* ---------- render ---------- */
 function render() {
-  const w = windowInfo();
   const lm = latestMonth();
   const upd = store.updated ? new Date(store.updated) : null;
   if (!busy || !hasAny()) setStatus(hasAny()
-    ? 'Data to ' + (lm ? MON[+lm.slice(4) - 1] + ' ' + lm.slice(0, 4) : (latestFullYear() || '')) + (upd ? ' · checked ' + upd.toLocaleDateString('en-GB', {day: 'numeric', month: 'short'}) + ' ' + upd.toTimeString().slice(0, 5) : '')
+    ? 'Data to ' + (lm ? mLabel(lm) : (latestFullYear() || '')) + (upd ? ' · checked ' + upd.toLocaleDateString('en-GB', {day: 'numeric', month: 'short'}) + ' ' + upd.toTimeString().slice(0, 5) : '')
     : 'No data yet. Connect to the internet and tap Refresh.');
+  if (!hasAny()) return;
+  fillPeriodControls();
+  const w = windowInfo();
+  const note = document.getElementById('periodNote');
+  note.textContent = '';
   if (!w) return;
+  if (w.missing.length) {
+    const todo = w.missing.filter((k) => !triedM.has(k));
+    if (todo.length && !busy) { todo.forEach((k) => triedM.add(k)); runJobs(todo.map((k) => ({kind: 'M', k}))); }
+    if (!w.cur) {
+      note.textContent = busy ? 'Downloading the months for ' + w.label + '… (about 2 seconds per month)' : 'Some months of ' + w.label + ' are not published yet. Pick an earlier period.';
+      document.getElementById('kpis').replaceChildren();
+      return;
+    }
+    if (!w.prev && !busy) note.textContent = 'Shown without comparison: ' + w.prevLabel + ' is not available.';
+  }
+  if (!note.textContent) note.textContent = 'Showing ' + w.label + (w.prev ? ', compared with ' + w.prevLabel : '') + '.';
   renderOverview(w); renderFuel(w); renderCountries(); renderAdvice(w);
 }
 
 function renderOverview(w) {
+  const yw = latestWindow();
   const cm = tot(w.cur, 'M'), cx = tot(w.cur, 'X'), pm = tot(w.prev, 'M'), px = tot(w.prev, 'X');
   const evC = grp(w.cur, 'M', GROUPS[6]).q / (cm.q || 1) * 100, evP = w.prev ? grp(w.prev, 'M', GROUPS[6]).q / (pm.q || 1) * 100 : null;
   const hyC = (grp(w.cur, 'M', GROUPS[4]).q + grp(w.cur, 'M', GROUPS[5]).q) / (cm.q || 1) * 100;
@@ -529,11 +651,11 @@ function renderOverview(w) {
   const cy = new Date().getFullYear(), cats = [], im = [], ex = [], faded = [];
   for (let y = 2019; y <= cy; y++) {
     let p = yearData(y), lab = String(y), part = false;
-    if (!p && w && !w.full && y === w.year) { p = w.cur; lab = y + '*'; part = true; }
+    if (!p && yw && !yw.full && y === yw.year) { p = yw.cur; lab = y + '*'; part = true; }
     if (!p) continue;
     cats.push(lab); im.push(tot(p, 'M').q); ex.push(tot(p, 'X').q); faded.push(part);
   }
-  document.getElementById('annualNote').textContent = 'Number of passenger cars.' + (w && !w.full ? ' * = ' + w.label + ' only.' : '');
+  document.getElementById('annualNote').textContent = 'Number of passenger cars.' + (yw && !yw.full ? ' * = ' + yw.label + ' only.' : '');
   barChart(document.getElementById('annualChart'), cats, [
     {name: 'Imported', color: 'var(--c-imp)', values: im, faded, labelTop: true},
     {name: 'Re-exported', color: 'var(--c-exp)', values: ex, faded}
@@ -546,11 +668,12 @@ function renderOverview(w) {
     {name: 'Re-exported', color: 'var(--c-exp)', values: ks.map((k2) => tot(store.monthly[k2], 'X').q)}
   ], (v) => fN(v) + ' cars');
   const pc = [], pv = [];
-  for (let y = 2019; y <= cy; y++) { let p = yearData(y), lab = String(y); if (!p && w && !w.full && y === w.year) { p = w.cur; lab = y + '*'; } if (!p) continue; const t = tot(p, 'M'); if (t.q) { pc.push(lab); pv.push(t.v / t.q); } }
+  for (let y = 2019; y <= cy; y++) { let p = yearData(y), lab = String(y); if (!p && yw && !yw.full && y === yw.year) { p = yw.cur; lab = y + '*'; } if (!p) continue; const t = tot(p, 'M'); if (t.q) { pc.push(lab); pv.push(t.v / t.q); } }
   lineChart(document.getElementById('priceChart'), pc, [{name: 'Average import price', color: 'var(--gold)', values: pv}], (v) => '$' + fN(v), {h: 170, zero: false, tick: (v) => '$' + fK(v)});
 }
 
 function renderFuel(w) {
+  const yw = latestWindow();
   document.getElementById('fuelTitle').textContent = 'Imports by fuel and engine type, ' + w.label;
   const cm = tot(w.cur, 'M');
   const t = document.getElementById('fuelTable');
@@ -571,7 +694,7 @@ function renderFuel(w) {
   const cy = new Date().getFullYear(), cats = [], data = [], ev = [], hy = [];
   for (let y = 2019; y <= cy; y++) {
     let p = yearData(y), lab = String(y);
-    if (!p && !w.full && y === w.year) { p = w.cur; lab = y + '*'; }
+    if (!p && yw && !yw.full && y === yw.year) { p = yw.cur; lab = y + '*'; }
     if (!p) continue;
     const r = {}; STACKS.forEach((k) => { r[k.id] = stackOf(p, k.id); });
     const total = tot(p, 'M').q || 1;
@@ -586,16 +709,22 @@ function renderFuel(w) {
 function pname(c) { const n = store.names && store.names[c]; return n ? n.n : (FALLBACK_NAMES[c] || 'Code ' + c); }
 function isGroup(c) { const n = store.names && store.names[c]; return n ? n.g : false; }
 function renderCountries() {
-  const P = store.partners;
+  const y = partnerYear();
+  const rows = y ? store.partnersBy[y] : null;
   const oT = document.getElementById('originTable'), dT = document.getElementById('destTable');
-  if (!P) { oT.replaceChildren(h('tr', null, [h('td', {cls: 'empty', text: 'Tap Refresh to download country data.'})])); dT.replaceChildren(); return; }
-  document.getElementById('originTitle').textContent = 'Where imported cars come from, ' + P.year;
-  document.getElementById('destTitle').textContent = 'Where re-exported cars go, ' + P.year;
+  if (y && !rows && !busy && !triedP.has(y)) { triedP.add(y); runJobs([{kind: 'P', y}]); }
+  document.getElementById('originTitle').textContent = 'Where imported cars come from' + (y ? ', ' + y : '');
+  document.getElementById('destTitle').textContent = 'Where re-exported cars go' + (y ? ', ' + y : '');
+  if (!rows) {
+    oT.replaceChildren(h('tr', null, [h('td', {cls: 'empty', text: busy ? 'Downloading country data…' : 'Tap Refresh to download country data.'})]));
+    dT.replaceChildren();
+    return;
+  }
   const fill = (tbl, flow) => {
-    const rows = P.rows.filter((r) => r.f === flow && !isGroup(r.c)).sort((a, b) => b.v - a.v);
-    const total = rows.reduce((a, r) => a + r.v, 0) || 1;
+    const list = rows.filter((r) => r.f === flow && !isGroup(r.c)).sort((a, b) => b.v - a.v);
+    const total = list.reduce((a, r) => a + r.v, 0) || 1;
     tbl.replaceChildren(h('tr', null, ['Country', 'Cars', 'Value', 'Share', 'Avg car'].map((x, i) => h('th', {cls: i ? 'n' : '', text: x}))),
-      ...rows.slice(0, 12).map((r) => h('tr', null, [
+      ...list.slice(0, 12).map((r) => h('tr', null, [
         h('td', {text: pname(r.c)}), h('td', {cls: 'n', text: fN(r.q)}), h('td', {cls: 'n', text: fUsd(r.v)}),
         h('td', {cls: 'n', text: (r.v / total * 100).toFixed(1) + '%'}), h('td', {cls: 'n', text: r.q ? '$' + fN(r.v / r.q) : '–'})
       ])));
