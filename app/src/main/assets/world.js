@@ -65,7 +65,7 @@ function setWStatus(t) { const e = document.getElementById('wStatus'); if (e) e.
 
 function renderWorld() {
   const visible = !document.getElementById('world').hidden;
-  if (IS_WEB && !RELAY) { setWStatus('Most of this page uses UN Comtrade data, which is in the Android app only for now. EU registrations below are live.'); if (visible && !wBusy && !world.eu) { wTriedNow = new Set(wYears().flatMap((y) => ['e' + y, 'i' + y])); worldSync(false); } }
+  if (IS_WEB && !RELAY) { setWStatus(wBusy ? 'Downloading EU registrations (Eurostat)…' : 'UN Comtrade and Eurostat data, about 6–12 months behind.'); if (visible && !wBusy && !world.eu) { wTriedNow = new Set(wYears().flatMap((y) => ['e' + y, 'i' + y])); worldSync(false); } }
   else if (visible && !wBusy && !busy && !wErr) worldSync(false);
   if (!(IS_WEB && !RELAY)) setWStatus(wBusy ? document.getElementById('wStatus').textContent : wErr ? 'Download stopped (' + wErr + '). Tap Refresh to try again.' : busy ? 'Waiting for the customs download to finish…' : 'UN Comtrade and Eurostat data, about 6–12 months behind.');
   const ys = wYears().filter((y) => world.exp[y]);
@@ -91,7 +91,7 @@ function renderWorld() {
     lineChart(document.getElementById('expChart'), ys.map(String), top5.map(([c, n], i) => ({name: n, color: PALETTE[i], values: ys.map((y) => { const a = (world.exp[y][c] || {})['8703']; return a && a.q > 0 ? a.q : null; })})), (v) => fN(v) + ' cars');
     legendOf(document.getElementById('expEvLegend'), top5.map(([, n], i) => [n, PALETTE[i]]));
     lineChart(document.getElementById('expEvChart'), ys.map(String), top5.map(([c, n], i) => ({name: n, color: PALETTE[i], values: ys.map((y) => { const a = (world.exp[y][c] || {})['8703'], e = (world.exp[y][c] || {})['870380']; return a && e && a.q > 0 ? e.q / a.q * 100 : null; })})), (v) => v.toFixed(1) + '% electric', {h: 180, tick: (v) => Math.round(v) + '%'});
-  } else et.replaceChildren(h('tr', null, [h('td', {cls: 'empty', text: IS_WEB && !RELAY ? 'UN Comtrade data: in the Android app only for now.' : wBusy || busy ? 'Downloading…' : 'Open this tab while online to download.'})]));
+  } else et.replaceChildren(h('tr', null, [h('td', {cls: 'empty', text: IS_WEB && !RELAY ? 'No data yet. Tap Refresh.' : wBusy || busy ? 'Downloading…' : 'Open this tab while online to download.'})]));
 
   /* re-export markets */
   const yi = wYears().filter((y) => world.imp[y]), li = yi[yi.length - 1];
@@ -107,7 +107,7 @@ function renderWorld() {
       }));
     legendOf(document.getElementById('mktLegend'), MARKETS.slice(0, 5).map(([, n], i) => [n, PALETTE[i]]));
     lineChart(document.getElementById('mktChart'), yi.map(String), MARKETS.slice(0, 5).map(([c, n], i) => ({name: n, color: PALETTE[i], values: yi.map((y) => { const a = (world.imp[y][c] || {})['8703']; return a ? a.q : null; })})), (v) => fN(v) + ' cars');
-  } else mt.replaceChildren(h('tr', null, [h('td', {cls: 'empty', text: IS_WEB && !RELAY ? 'UN Comtrade data: in the Android app only for now.' : wBusy || busy ? 'Downloading…' : 'Open this tab while online to download.'})]));
+  } else mt.replaceChildren(h('tr', null, [h('td', {cls: 'empty', text: IS_WEB && !RELAY ? 'No data yet. Tap Refresh.' : wBusy || busy ? 'Downloading…' : 'Open this tab while online to download.'})]));
 
   /* EU */
   if (world.eu) {

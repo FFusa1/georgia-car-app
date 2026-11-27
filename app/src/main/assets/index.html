@@ -461,6 +461,20 @@ const IS_WEB = !(window.Native && Native.get);
 const RELAY = '';
 const NEEDS_RELAY = ['https://comtradeapi.un.org/', 'https://nbg.gov.ge/en/'];
 const NO_RELAY_MSG = 'Customs data is in the Android app only for now';
+/* Without a relay the web version reads snapshot.json: the same customs data, downloaded daily by GitHub Actions. */
+const WEB_SNAP = IS_WEB && !RELAY;
+let snapErr = '';
+async function loadSnap() {
+  const r = await fetch('snapshot.json', {cache: 'no-cache'}).then((x) => x.ok ? x.json() : Promise.reject(new Error('error ' + x.status))).catch((e) => { snapErr = e.message; return null; });
+  if (!r || !r.store) { if (!snapErr) snapErr = 'no data'; return; }
+  snapErr = '';
+  ['annual', 'monthly', 'partnersBy', 'partnersM'].forEach((k) => { store[k] = r.store[k] || {}; });
+  if (r.store.names) store.names = r.store.names;
+  if (r.updated) store.updated = r.updated;
+  save();
+  if (r.world) { world.exp = r.world.exp || {}; world.imp = r.world.imp || {}; wSave(); }
+  if (r.rate) { mac.rate = r.rate; mSave(); }
+}
 function rawGet(url) {
   if (!IS_WEB) return new Promise((res) => { const id = 'r' + (++seq); pending[id] = res; Native.get(id, url); });
   if (NEEDS_RELAY.some((p) => url.indexOf(p) === 0)) { if (!RELAY) return Promise.resolve({code: -2, body: NO_RELAY_MSG}); url = RELAY + encodeURIComponent(url); }
@@ -499,7 +513,7 @@ const hasData = (p) => !!(p && p.M && p.M['8703'] && p.M['8703'].v > 0);
 /* ---------- downloading ---------- */
 let busy = false, cancelJobs = false, autoPause = '';
 async function runJobs(jobs) {
-  if (busy || !jobs.length) return null;
+  if (WEB_SNAP || busy || !jobs.length) return null;
   busy = true; cancelJobs = false;
   const btn = document.getElementById('refresh'); btn.disabled = true;
   showError('');
@@ -553,7 +567,13 @@ async function runJobs(jobs) {
 }
 async function sync(force) {
   if (busy) return;
-  if (IS_WEB && !RELAY) { render(); return; }
+  if (WEB_SNAP) {
+    busy = true; setStatus('Loading customs data…');
+    await loadSnap();
+    busy = false; render();
+    if (snapErr) showError('Could not load customs data (' + snapErr + ').' + (hasAny() ? ' Showing saved data.' : ' Tap Refresh to try again.'));
+    return;
+  }
   const now = new Date(), cy = now.getFullYear(), cm = now.getMonth() + 1;
   const jobs = [];
   for (let y = 2018; y <= cy - 1; y++) {
@@ -808,7 +828,7 @@ function stackChart(box, cats, rows) {
 
 /* ---------- render ---------- */
 const CT_TABS = ['overview', 'fuel', 'countries', 'advice'], G_TABS = ['gbrands', 'gmodels', 'gmix'];
-let curT = IS_WEB && !RELAY ? 'gbrands' : 'overview';
+let curT = 'overview';
 try { const t0 = localStorage.getItem('gcm_tab'); if (t0 && document.getElementById(t0)) curT = t0; } catch (e) {}
 function curTab() { return curT; }
 function render() {
@@ -826,14 +846,8 @@ function renderCT() {
   const upd = store.updated ? new Date(store.updated) : null;
   if (!busy || !hasAny()) setStatus(hasAny()
     ? 'Data to ' + (lm ? mLabel(lm) : (latestFullYear() || '')) + (upd ? ' · checked ' + upd.toLocaleDateString('en-GB', {day: 'numeric', month: 'short'}) + ' ' + upd.toTimeString().slice(0, 5) : '')
-    : IS_WEB && !RELAY ? 'Brands, Models, Market mix and Economy are live. ' + NO_RELAY_MSG + '.' : 'No data yet. Connect to the internet and tap Refresh.');
-  if (!hasAny()) {
-    if (IS_WEB && !RELAY) {
-      document.getElementById('periodNote').textContent = 'This page uses UN Comtrade customs data, which is in the Android app only for now. Brands, Models, Market mix and Economy are live here.';
-      document.getElementById('periodSel').hidden = true;
-    }
-    return;
-  }
+    : busy ? 'Loading customs data…' : 'No data yet. Connect to the internet and tap Refresh.');
+  if (!hasAny()) return;
   fillPeriodControls();
   const w = windowInfo();
   const note = document.getElementById('periodNote');
@@ -1020,7 +1034,7 @@ const NAV = [
   {id: 'world', label: 'World', tabs: [['world', 'International']]},
   {id: 'advice', label: 'Advice', tabs: [['advice', 'Stock advice'], ['dealer', 'Import a brand'], ['brands', 'Rules & sources']]}
 ];
-const lastSub = IS_WEB && !RELAY ? {market: 'gmix'} : {};
+const lastSub = {};
 function navOf(t) { return NAV.find((g) => g.tabs.some((x) => x[0] === t)) || NAV[0]; }
 function showTab(t) {
   curT = t; const g = navOf(t); lastSub[g.id] = t;
@@ -1043,7 +1057,7 @@ document.getElementById('refresh').addEventListener('click', () => { if (!docume
 let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(render, 200); });
 showTab(curT);
 const age = store.updated ? (Date.now() - new Date(store.updated).getTime()) / 864e5 : 99;
-if (!hasAny() || age > 3) sync(false);
+if (WEB_SNAP || !hasAny() || age > 3) sync(false);
 geoSync(false);
 macroSync(false);
 if (IS_WEB && location.protocol === 'https:' && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});

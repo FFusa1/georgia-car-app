@@ -1,7 +1,7 @@
 /* Keeps the app's own files on the phone so it opens offline.
    Always tries the network first, so updates arrive on the next launch. Data downloads are not touched. */
 const CACHE = 'gcm-shell-v1';
-const SHELL = ['./', 'index.html', 'geo.js', 'macro.js', 'world.js', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
+const SHELL = ['./', 'index.html', 'geo.js', 'macro.js', 'world.js', 'dealer.js', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

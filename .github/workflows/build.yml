@@ -4,12 +4,16 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  schedule:
+    # daily: refresh the customs data of the web version (the APK is not rebuilt)
+    - cron: '30 3 * * *'
 
 permissions:
   contents: write
 
 jobs:
   build:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -71,6 +75,14 @@ jobs:
           for s in 180 192 512; do rsvg-convert -w $s -h $s web/icon.svg -o _site/icon-$s.png; done
           sed -i "s/gcm-shell-v1/gcm-shell-${GITHUB_SHA::7}/" _site/sw.js
           touch _site/.nojekyll
+
+      - name: Download customs data for the web version
+        # Web pages cannot call UN Comtrade or the NBG policy-rate page, so the data is fetched here.
+        # Anything that fails to download is kept from the previous snapshot.
+        timeout-minutes: 60
+        run: |
+          curl -sf "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/gh-pages/snapshot.json" -o old.json || echo '{}' > old.json
+          python3 web/snapshot.py old.json _site/snapshot.json
 
       - name: Publish to gh-pages
         env:

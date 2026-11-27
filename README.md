@@ -47,18 +47,17 @@ Every push to `main` builds the app on GitHub Actions and publishes
 phone, download the APK and open it. Android asks once to allow installs
 from your browser.
 
-## iPhone (home-screen web app)
+## Web version (any browser, iPhone home screen)
 
 Every push also publishes the same app as a web app on GitHub Pages:
-**https://ffusa1.github.io/georgia-car-app/**. On an iPhone open it in Safari,
-tap **Share → Add to Home Screen**. It opens full screen with its own icon and
-updates itself.
+**https://ffusa1.github.io/georgia-car-app/**. It shows the same pages as the
+Android app. On an iPhone open it in Safari and tap **Share → Add to Home
+Screen**: it opens full screen with its own icon and updates itself.
 
-Brands, Models, Market mix, Economy and EU registrations work there. UN Comtrade
-data (Overview, Imports by fuel, Countries, world exports) and the NBG policy
-rate block requests from web pages, so they need a relay: put the relay's
-address in `RELAY` in `index.html` (for example
-`https://<name>.workers.dev/?u=`). Until then those parts say "Android app only".
+Web pages are not allowed to call UN Comtrade or the NBG policy-rate page
+directly. So GitHub Actions downloads that data once a day (and on every push)
+with `web/snapshot.py` and publishes it as `snapshot.json` next to the web app.
+All other sources are downloaded live by the page, as in the Android app.
 
 ## Keeping updates installable
 
@@ -75,4 +74,5 @@ named `KEYSTORE_B64` holding a base64-encoded Android debug keystore
 - `app/src/main/assets/macro.js`: economy data
 - `app/src/main/assets/world.js`: international market
 - `app/src/main/java/ge/carmarket/app/MainActivity.java`: shows the page and downloads data for it (only from the hosts above)
-- `.github/workflows/build.yml`: cloud build
+- `web/snapshot.py`: daily customs and policy-rate download for the web version
+- `.github/workflows/build.yml`: cloud build (APK and web version)

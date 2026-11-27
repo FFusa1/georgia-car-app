@@ -118,7 +118,7 @@ function renderMacro() {
     ['Inflation' + (cpiL ? ', ' + mLabel(cpiL[0]) : ''), cpiL ? cpiL[1].toFixed(1) + '%' : '–', {t: cpiP ? 'a year earlier ' + cpiP[1].toFixed(1) + '%' : '', c: 'flat'}],
     ['Average monthly salary' + (wL ? ', ' + wL[0] : ''), wL ? 'GEL ' + fN(wL[1]) : '–', chg(wP ? pct(wL[1], wP[1]) : null)],
     ['Salary in USD', wUsd ? '$' + fN(wUsd) : '–', {t: 'at today’s rate', c: 'flat'}],
-    ['NBG policy rate', rate ? rate[1].toFixed(2) + '%' : '–', {t: rate ? 'decided ' + new Date(rate[0]).toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'}) : IS_WEB && !RELAY ? 'in the Android app' : '', c: 'flat'}],
+    ['NBG policy rate', rate ? rate[1].toFixed(2) + '%' : '–', {t: rate ? 'decided ' + new Date(rate[0]).toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'}) : '', c: 'flat'}],
     ['Money sent home' + (remitL ? ', ' + remitL[0] : ''), remitL ? remitL[1].toFixed(1) + '%' : '–', {t: 'of GDP (World Bank)', c: 'flat'}]
   ];
   document.getElementById('mKpis').replaceChildren(...k.map(([l, v, c]) => h('div', {cls: 'kpi'}, [h('div', {cls: 'l', text: l}), h('div', {cls: 'v', text: v}), h('div', {cls: 'c ' + c.c, text: c.t || ''})])));
