@@ -11,8 +11,6 @@ const DKEY = 'gcm_dealer_v1';
 const D_BRANDS = [
   {id: 'lynk', name: 'Lynk & Co', geo: ['LYNK&CO'], grp: 'Geely group, China', sales: 'Part of Geely Auto: 3.02M in 2025 (+39%)', exp: 'Geely exports ~0.9M Jan–Oct 2026', pt: 'Hybrid, plug-in hybrid, electric', pos: 'Upper-mid', models: '08 / 06 EM-P plug-in SUVs, 900 (est. $35–50k)',
     ge: 'No official dealer found. Tegeta Cars holds Geely and Zeekr, so it may claim Lynk & Co first.', reg: 'Not confirmed in Armenia, Azerbaijan or Türkiye.', apply: 'No public form: Geely picks partners by negotiation. Contact Lynk & Co International (Geely export).', risk: 'Lynk & Co is being merged into Zeekr; check who signs overseas deals.', g: 15, f: 16, a: 10},
-  {id: 'li', name: 'Li Auto', geo: ['LIXIANG', 'LI'], grp: 'Li Auto, China', sales: '406,343 in 2025 (−19%)', exp: 'Minimal (Kazakhstan, Azerbaijan, Uzbekistan)', pt: 'Range-extender, electric', pos: 'Premium', models: 'L6 ($35–40k), L7, L9 ($55–60k) family SUVs (est.)',
-    ge: 'Open: only grey imports (e.g. autobridge.ge).', reg: 'Official in Uzbekistan; reported in Azerbaijan and Kazakhstan.', apply: 'No public form. Contact Li Auto overseas business directly or at a Chinese auto show.', risk: 'Sales and profit falling (profit −86%); no structured export programme yet.', g: 10, f: 14, a: 14},
   {id: 'avatr', name: 'Avatr', geo: ['AVATR'], grp: 'Changan / CATL / Huawei, China', sales: 'Part of Changan: 2.91M in 2025 (+8.5%)', exp: 'Changan exports 637k in 2025 (+19%)', pt: 'Range-extender, electric', pos: 'Premium', models: 'Avatr 11, 12, 07 (est. $40–60k)',
     ge: 'No official dealer found. SR Auto Georgia holds Changan and Deepal and may have first right.', reg: 'Changan official in Armenia (Ciar Auto) and Kazakhstan.', apply: 'Ask Changan International / Avatr overseas; check SR Auto’s contract first.', risk: 'Changan’s China sales down in 2026; premium price.', g: 14, f: 13, a: 10},
   {id: 'leap', name: 'Leapmotor', geo: ['LEAPMOTOR'], grp: 'Leapmotor, China (Stellantis partner)', sales: '596,555 in 2025 (+103%)', exp: '181k Jan–Oct 2026 (+308%)', pt: 'Electric, range-extender', pos: 'Budget–mid', models: 'T03 (~€18k), B10 (~€30k), C10 (~€35k)',
@@ -50,7 +48,7 @@ const D_TAKEN = [
   ['BYD', ['BYD'], 'GT Group (exclusive, 2026)'], ['Chery', ['CHERY'], 'Sena Auto Group (2025)'], ['JAC', ['JAC'], 'Sena Auto Group'],
   ['Jetour', ['JETOUR'], 'E-Motors Georgia (2023)'], ['Geely', ['GEELY'], 'Tegeta Cars (2023)'], ['Zeekr', ['ZEEKR'], 'Tegeta Cars (2024)'],
   ['Changan, Deepal', ['CHANGAN', 'DEEPAL'], 'SR Auto Georgia'], ['GWM: Haval, Tank, ORA', ['HAVAL', 'TANK', 'GWM', 'GREAT WALL', 'ORA'], 'GWM Georgia, gwm.ge (2026)'],
-  ['MG', ['MG'], 'Strada Group'], ['Hongqi', ['HONGQI'], 'E-auto (Armenia, 2026)'], ['Forthing', ['FORTHING'], 'E-Motors Georgia']
+  ['Li Auto', ['LIXIANG', 'LI'], 'DMG Group (exclusive, 2025)'], ['MG', ['MG'], 'Strada Group'], ['Hongqi', ['HONGQI'], 'E-auto (Armenia, 2026)'], ['Forthing', ['FORTHING'], 'E-Motors Georgia']
 ];
 let dealer = {s: {}, start: 2017, updated: null};
 try { const s0 = JSON.parse(localStorage.getItem(DKEY)); if (s0 && s0.s) dealer = Object.assign(dealer, s0); } catch (e) {}
