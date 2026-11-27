@@ -270,7 +270,7 @@ const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','
 
 /* ---------- storage ---------- */
 const KEY = 'gcm_store_v1';
-let store = {annual:{}, monthly:{}, partnersBy:{}, names:null, updated:null};
+let store = {annual:{}, monthly:{}, partnersBy:{}, partnersM:{}, names:null, updated:null};
 try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.annual) store = Object.assign(store, s); } catch (e) {}
 if (store.partners && store.partners.year) { store.partnersBy[store.partners.year] = store.partners.rows; delete store.partners; }
 function save() { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) {} }
@@ -307,15 +307,17 @@ function pack(rows) {
 const hasData = (p) => !!(p && p.M && p.M['8703'] && p.M['8703'].v > 0);
 
 /* ---------- downloading ---------- */
-let busy = false;
+let busy = false, cancelJobs = false, autoPause = '';
 async function runJobs(jobs) {
   if (busy || !jobs.length) return null;
-  busy = true;
+  busy = true; cancelJobs = false;
   const btn = document.getElementById('refresh'); btn.disabled = true;
   showError('');
   let done = 0, failed = null;
   setBar(0.02);
+  let cancelled = false;
   for (const job of jobs) {
+    if (cancelJobs) { cancelled = true; break; }
     try {
       if (job.kind === 'A') {
         setStatus('Downloading ' + job.y + '…');
@@ -325,6 +327,7 @@ async function runJobs(jobs) {
         setStatus('Downloading ' + MON[+job.k.slice(4) - 1] + ' ' + job.k.slice(0, 4) + '…');
         const p = pack(await trade('M', job.k, '&partnerCode=0&cmdCode=' + CODES.join(',')));
         if (hasData(p)) store.monthly[job.k] = p; else delete store.monthly[job.k];
+        triedM.add(job.k);
       } else if (job.kind === 'N') {
         setStatus('Downloading country names…');
         const j = await getJson(NAMES_URL);
@@ -337,7 +340,14 @@ async function runJobs(jobs) {
           setStatus('Downloading countries for ' + y + '…');
           const rows = await trade('A', y, '&cmdCode=8703');
           store.partnersBy[y] = rows.filter((r) => r.partnerCode !== 0).map((r) => ({f: r.flowCode, c: r.partnerCode, q: r.qty || 0, v: r.primaryValue || 0}));
+          triedP.add('y' + y);
         }
+      } else if (job.kind === 'PM') {
+        setStatus('Downloading countries for ' + mLabel(job.k) + '…');
+        const rows = await trade('M', job.k, '&cmdCode=8703');
+        const list = rows.filter((r) => r.partnerCode !== 0).map((r) => ({f: r.flowCode, c: r.partnerCode, q: r.qty || 0, v: r.primaryValue || 0}));
+        if (list.length) store.partnersM[job.k] = list;
+        triedP.add(job.k);
       }
       save();
     } catch (e) { failed = e; break; }
@@ -346,9 +356,10 @@ async function runJobs(jobs) {
   }
   setBar(0);
   btn.disabled = false; busy = false;
+  if (failed) autoPause = failed.message;
   render();
   if (failed) showError(failed.message + (hasAny() ? ' Showing saved data.' : ''));
-  return failed;
+  return failed || (cancelled ? new Error('cancelled') : null);
 }
 async function sync(force) {
   if (busy) return;
@@ -369,7 +380,7 @@ async function sync(force) {
   if (!store.names) jobs.push({kind: 'N'});
   const fy = latestFullYear();
   if (force || !fy || !store.partnersBy[fy]) jobs.push({kind: 'P'});
-  triedM.clear(); triedP.clear();
+  triedM.clear(); triedP.clear(); autoPause = '';
   const failed = await runJobs(jobs);
   if (!failed) { store.updated = new Date().toISOString(); save(); render(); }
 }
@@ -422,14 +433,14 @@ function latestWindow() {
     return {label: String(y), prevLabel: String(y - 1), cur: yearData(y), prev: yearData(y - 1), year: y, full: true, missing: []};
   }
   const span = m === 1 ? 'Jan' : 'Jan–' + MON[m - 1];
-  return {label: span + ' ' + y, prevLabel: span + ' ' + (y - 1), cur: sumP(cur), prev: prev ? sumP(prev) : null, year: y, month: m, full: false, missing: []};
+  return {label: span + ' ' + y, prevLabel: span + ' ' + (y - 1), cur: sumP(cur), prev: prev ? sumP(prev) : null, year: y, month: m, full: false, missing: [], keys: keysBetween(mk(y, 1), lm)};
 }
 function rangeWindow(a, b) {
   const ks = keysBetween(a, b), pk = ks.map((k) => addM(k, -12));
   const missing = ks.concat(pk).filter((k) => !hasData(store.monthly[k]));
   const cur = ks.every((k) => hasData(store.monthly[k])) ? sumP(ks.map((k) => store.monthly[k])) : null;
   const prev = pk.every((k) => hasData(store.monthly[k])) ? sumP(pk.map((k) => store.monthly[k])) : null;
-  return {label: rangeLabel(a, b), prevLabel: rangeLabel(pk[0], pk[pk.length - 1]), cur, prev, year: +b.slice(0, 4), full: false, missing, range: [a, b]};
+  return {label: rangeLabel(a, b), prevLabel: rangeLabel(pk[0], pk[pk.length - 1]), cur, prev, year: +b.slice(0, 4), full: false, missing, range: [a, b], keys: ks};
 }
 function clampRange(a, b) {
   const lm = latestMonth();
@@ -449,7 +460,7 @@ function windowInfo() {
   if (sel.mode === 'range' && sel.from && sel.to && lm) { const [a, b] = clampRange(sel.from, sel.to); return rangeWindow(a, b); }
   return latestWindow();
 }
-function partnerYear() { return sel.mode === 'year' ? sel.year : latestFullYear(); }
+function stopForNewPeriod() { autoPause = ''; showError(''); if (busy) cancelJobs = true; }
 
 function fillPeriodControls() {
   const lm = latestMonth();
@@ -479,6 +490,7 @@ function fillPeriodControls() {
   }
 }
 document.getElementById('periodSel').addEventListener('change', (e) => {
+  stopForNewPeriod();
   const v = e.target.value, lm = latestMonth();
   if (v === 'latest' || v === 'l12') sel = {mode: v};
   else if (v.charAt(0) === 'y') sel = {mode: 'year', year: +v.slice(1)};
@@ -486,6 +498,7 @@ document.getElementById('periodSel').addEventListener('change', (e) => {
   saveSel(); render();
 });
 document.getElementById('applyRange').addEventListener('click', () => {
+  stopForNewPeriod();
   const [a, b] = clampRange(document.getElementById('fromSel').value, document.getElementById('toSel').value);
   sel = {mode: 'range', from: a, to: b};
   saveSel(); render();
@@ -617,16 +630,17 @@ function render() {
   if (!w) return;
   if (w.missing.length) {
     const todo = w.missing.filter((k) => !triedM.has(k));
-    if (todo.length && !busy) { todo.forEach((k) => triedM.add(k)); runJobs(todo.map((k) => ({kind: 'M', k}))); }
+    if (todo.length && !busy && !autoPause) runJobs(todo.map((k) => ({kind: 'M', k})));
     if (!w.cur) {
-      note.textContent = busy ? 'Downloading the months for ' + w.label + '… (about 2 seconds per month)' : 'Some months of ' + w.label + ' are not published yet. Pick an earlier period.';
+      note.textContent = busy ? 'Downloading the months for ' + w.label + '… (about 2 seconds per month)' : autoPause ? 'Download stopped (' + autoPause + '). Tap Refresh, or pick the period again.'
+        : 'Some months of ' + w.label + ' are not published yet. Pick an earlier period.';
       document.getElementById('kpis').replaceChildren();
       return;
     }
     if (!w.prev && !busy) note.textContent = 'Shown without comparison: ' + w.prevLabel + ' is not available.';
   }
   if (!note.textContent) note.textContent = 'Showing ' + w.label + (w.prev ? ', compared with ' + w.prevLabel : '') + '.';
-  renderOverview(w); renderFuel(w); renderCountries(); renderAdvice(w);
+  renderOverview(w); renderFuel(w); renderCountries(w); renderAdvice(w);
 }
 
 function renderOverview(w) {
@@ -708,15 +722,36 @@ function renderFuel(w) {
 
 function pname(c) { const n = store.names && store.names[c]; return n ? n.n : (FALLBACK_NAMES[c] || 'Code ' + c); }
 function isGroup(c) { const n = store.names && store.names[c]; return n ? n.g : false; }
-function renderCountries() {
-  const y = partnerYear();
-  const rows = y ? store.partnersBy[y] : null;
+function mergeRows(lists) {
+  const m = {};
+  lists.forEach((l) => l.forEach((r) => { const k = r.f + r.c; const a = m[k] || (m[k] = {f: r.f, c: r.c, q: 0, v: 0}); a.q += r.q; a.v += r.v; }));
+  return Object.values(m);
+}
+function renderCountries(w) {
+  const visible = !document.getElementById('countries').hidden;
+  let rows = null, waiting = false;
+  if (w.keys) {
+    const need = w.keys.filter((k) => !store.partnersM[k]);
+    if (!need.length) rows = mergeRows(w.keys.map((k) => store.partnersM[k]));
+    else {
+      const todo = need.filter((k) => !triedP.has(k));
+      waiting = todo.length > 0;
+      if (visible && todo.length && !busy && !autoPause) runJobs(todo.map((k) => ({kind: 'PM', k})));
+    }
+  } else {
+    rows = store.partnersBy[w.year] || null;
+    waiting = !rows && !triedP.has('y' + w.year);
+    if (visible && waiting && !busy && !autoPause) runJobs([{kind: 'P', y: w.year}]);
+  }
   const oT = document.getElementById('originTable'), dT = document.getElementById('destTable');
-  if (y && !rows && !busy && !triedP.has(y)) { triedP.add(y); runJobs([{kind: 'P', y}]); }
-  document.getElementById('originTitle').textContent = 'Where imported cars come from' + (y ? ', ' + y : '');
-  document.getElementById('destTitle').textContent = 'Where re-exported cars go' + (y ? ', ' + y : '');
+  document.getElementById('originTitle').textContent = 'Where imported cars come from, ' + w.label;
+  document.getElementById('destTitle').textContent = 'Where re-exported cars go, ' + w.label;
   if (!rows) {
-    oT.replaceChildren(h('tr', null, [h('td', {cls: 'empty', text: busy ? 'Downloading country data…' : 'Tap Refresh to download country data.'})]));
+    const msg = busy && waiting ? 'Downloading country data for ' + w.label + '… (about 2 seconds per month)'
+      : autoPause ? 'Download stopped (' + autoPause + '). Tap Refresh, or pick the period again.'
+      : waiting ? 'Country data for ' + w.label + ' downloads when you open this tab.'
+      : 'Country data for ' + w.label + ' is not published yet.';
+    oT.replaceChildren(h('tr', null, [h('td', {cls: 'empty', text: msg})]));
     dT.replaceChildren();
     return;
   }
