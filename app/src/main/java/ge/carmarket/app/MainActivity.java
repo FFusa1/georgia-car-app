@@ -23,8 +23,8 @@ import java.util.concurrent.Executors;
 
 /**
  * One-screen app: shows the dashboard page bundled in assets/index.html.
- * The page asks this activity to download data (Native.get) because the
- * data service does not allow direct browser requests.
+ * The page asks this activity to download data (Native.get / Native.post)
+ * because some data services do not allow direct browser requests.
  */
 public class MainActivity extends Activity {
 
@@ -68,22 +68,54 @@ public class MainActivity extends Activity {
         super.onDestroy();
     }
 
+    /** Official data services the page may download from. */
+    private static final String[] ALLOWED = {
+            "https://comtradeapi.un.org/",
+            "https://autoapi.geostat.ge/",
+            "https://pc-axis.geostat.ge/",
+            "https://nbg.gov.ge/",
+            "https://api.worldbank.org/",
+            "https://ec.europa.eu/eurostat/api/"
+    };
+
+    private static boolean allowed(String url) {
+        for (String a : ALLOWED) if (url.startsWith(a)) return true;
+        return false;
+    }
+
     private class Bridge {
         @JavascriptInterface
         public void get(final String id, final String url) {
+            fetch(id, url, null);
+        }
+
+        @JavascriptInterface
+        public void post(final String id, final String url, final String json) {
+            fetch(id, url, json);
+        }
+
+        private void fetch(final String id, final String url, final String json) {
             pool.execute(() -> {
                 int code;
                 String body;
                 HttpURLConnection c = null;
                 try {
-                    if (!url.startsWith("https://comtradeapi.un.org/")) {
+                    if (!allowed(url)) {
                         throw new IllegalArgumentException("Blocked URL");
                     }
                     c = (HttpURLConnection) new URL(url).openConnection();
                     c.setConnectTimeout(20000);
-                    c.setReadTimeout(45000);
-                    c.setRequestProperty("User-Agent", "GeorgiaCarMarketApp/1.0");
-                    c.setRequestProperty("Accept", "application/json");
+                    c.setReadTimeout(60000);
+                    c.setRequestProperty("User-Agent", "GeorgiaCarMarketApp/2.0");
+                    c.setRequestProperty("Accept", "application/json, text/html");
+                    if (json != null) {
+                        c.setRequestMethod("POST");
+                        c.setDoOutput(true);
+                        c.setRequestProperty("Content-Type", "application/json");
+                        byte[] out = json.getBytes(StandardCharsets.UTF_8);
+                        c.setFixedLengthStreamingMode(out.length);
+                        c.getOutputStream().write(out);
+                    }
                     code = c.getResponseCode();
                     InputStream in = code >= 400 ? c.getErrorStream() : c.getInputStream();
                     body = in == null ? "" : read(in);

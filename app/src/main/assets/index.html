@@ -6,98 +6,123 @@
 <title>Georgia Car Market</title>
 <style>
 :root {
-  --bg: #f4f6f9; --panel: #ffffff; --fg: #17212b; --muted: #5d6b7a; --line: #dde3ea;
-  --accent: #1f4e79; --gold: #c98a1b;
-  --ok: #1a7f4b; --warn: #a86a00; --bad: #c0392b;
-  --c-imp: #1f4e79; --c-exp: #d08a2a;
-  --c-pet: #7d8b99; --c-dsl: #4a5561; --c-hev: #2e8b57; --c-phev: #6bbf8a; --c-ev: #2f7fd1; --c-oth: #c3ccd5;
+  --bg: #f2f4f8; --panel: #ffffff; --panel2: #f7f9fc; --fg: #0f1b2d; --muted: #64748b; --line: #e5e9f0;
+  --accent: #2563eb; --accent-soft: #e0e9ff; --head: #0b2545; --head2: #13386b; --gold: #d99a1e;
+  --ok: #15803d; --warn: #b45309; --bad: #dc2626;
+  --c-imp: #2563eb; --c-exp: #f59e0b;
+  --c-pet: #8a97a8; --c-dsl: #475569; --c-hev: #16a34a; --c-phev: #86d6a2; --c-ev: #0ea5e9; --c-oth: #cbd5e1;
+  --shadow: 0 1px 2px rgba(15,27,45,.05), 0 6px 20px rgba(15,27,45,.05);
+  --radius: 18px;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0f151c; --panel: #17202a; --fg: #e8edf2; --muted: #9aa8b6; --line: #2a3643;
-    --accent: #7fb2e5; --gold: #e8b04b;
-    --ok: #4cc38a; --warn: #e0a534; --bad: #ef6b5b;
-    --c-imp: #5f9bd6; --c-exp: #e8a24b;
-    --c-pet: #8d9aa7; --c-dsl: #5e6b78; --c-hev: #4cbf7f; --c-phev: #8fd8a8; --c-ev: #5aa9f0; --c-oth: #46525e;
+    --bg: #0b1220; --panel: #131c2e; --panel2: #18233a; --fg: #e8eef7; --muted: #94a3b8; --line: #243149;
+    --accent: #60a5fa; --accent-soft: #1d3157; --head: #0b1220; --head2: #111d33; --gold: #f2b84b;
+    --ok: #4ade80; --warn: #fbbf24; --bad: #f87171;
+    --c-imp: #60a5fa; --c-exp: #fbbf24;
+    --c-pet: #94a3b8; --c-dsl: #64748b; --c-hev: #4ade80; --c-phev: #a7f3d0; --c-ev: #38bdf8; --c-oth: #334155;
+    --shadow: 0 1px 2px rgba(0,0,0,.3);
   }
 }
-* { box-sizing: border-box; }
-html, body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-text-size-adjust: 100%; }
-header { position: sticky; top: 0; z-index: 10; background: var(--accent); color: #fff; padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 0; }
-@media (prefers-color-scheme: dark) { header { background: #12304d; } }
-.top { display: flex; align-items: center; gap: 12px; }
-.top h1 { margin: 0; font-size: 18px; font-weight: 650; flex: 1; letter-spacing: .2px; }
-.status { font-size: 12px; opacity: .85; margin-top: 2px; }
-button.refresh { font: inherit; font-size: 13px; background: rgba(255,255,255,.16); color: #fff; border: 1px solid rgba(255,255,255,.35); border-radius: 999px; padding: 6px 14px; }
-button.refresh:disabled { opacity: .5; }
-.progress { height: 3px; background: rgba(255,255,255,.2); margin: 10px -16px 0; }
-.progress > div { height: 100%; width: 0; background: var(--gold); transition: width .3s; }
-nav { display: flex; gap: 2px; overflow-x: auto; margin: 0 -16px; padding: 0 10px; scrollbar-width: none; }
-nav::-webkit-scrollbar { display: none; }
-nav button { font: inherit; font-size: 13px; color: rgba(255,255,255,.75); background: none; border: 0; padding: 10px 10px 11px; white-space: nowrap; border-bottom: 3px solid transparent; }
-nav button.on { color: #fff; border-bottom-color: var(--gold); font-weight: 600; }
-main { padding: 16px; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px); display: grid; gap: 16px; max-width: 960px; margin: 0 auto; }
-section[hidden] { display: none; }
-section { display: grid; gap: 16px; }
-.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 10px; min-width: 0; }
-h2 { margin: 0; font-size: 15px; font-weight: 650; }
-.note { margin: 0; color: var(--muted); font-size: 12px; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-text-size-adjust: 100%; }
+header { position: sticky; top: 0; z-index: 10; background: linear-gradient(135deg, var(--head), var(--head2)); color: #fff; padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 10px; box-shadow: 0 2px 12px rgba(0,0,0,.12); }
+.top { display: flex; align-items: center; gap: 12px; max-width: 960px; margin: 0 auto; }
+.brand { width: 36px; height: 36px; border-radius: 11px; background: rgba(255,255,255,.12); display: grid; place-items: center; flex: none; }
+.brand svg { width: 22px; height: 22px; stroke: #fff; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.top h1 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: .1px; }
+.status { font-size: 12px; opacity: .78; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+button.refresh { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.14); color: #fff; border: 0; padding: 0; }
+button.refresh svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+button.refresh:active { background: rgba(255,255,255,.25); }
+button.refresh:disabled svg { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.progress { height: 3px; background: transparent; margin: 8px -16px -10px; }
+.progress > div { height: 100%; width: 0; background: var(--gold); transition: width .3s; border-radius: 0 3px 3px 0; }
+#tabs { display: flex; gap: 8px; overflow-x: auto; margin: 12px -16px 0; padding: 0 16px 2px; scrollbar-width: none; max-width: 992px; }
+#tabs::-webkit-scrollbar { display: none; }
+#tabs button { font: inherit; font-size: 13px; font-weight: 600; color: rgba(255,255,255,.82); background: rgba(255,255,255,.1); border: 0; border-radius: 999px; padding: 7px 14px; white-space: nowrap; }
+#tabs button.on { color: var(--head); background: #fff; }
+#tabs:empty { display: none; }
+nav#bottom { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: flex; justify-content: space-around; background: color-mix(in srgb, var(--panel) 92%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-top: 1px solid var(--line); padding: 6px 4px calc(env(safe-area-inset-bottom, 0px) + 6px); }
+nav#bottom button { flex: 1; font: inherit; font-size: 11px; font-weight: 600; color: var(--muted); background: none; border: 0; padding: 2px 0; display: grid; justify-items: center; gap: 3px; min-width: 0; }
+nav#bottom .ic { width: 56px; height: 30px; border-radius: 999px; display: grid; place-items: center; transition: background .2s; }
+nav#bottom svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+nav#bottom button.on { color: var(--accent); }
+nav#bottom button.on .ic { background: var(--accent-soft); }
+main { padding: 16px; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 96px); display: grid; gap: 14px; max-width: 960px; margin: 0 auto; }
+[hidden] { display: none !important; }
+section { display: grid; gap: 14px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; display: grid; gap: 12px; min-width: 0; box-shadow: var(--shadow); }
+h2 { margin: 0; font-size: 15.5px; font-weight: 700; letter-spacing: -.1px; }
+h3 { margin: 0; font-size: 13px; font-weight: 700; }
+.note { margin: 0; color: var(--muted); font-size: 12.5px; }
 .kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 @media (min-width: 640px) { .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 2px; min-width: 0; }
-.kpi .l { font-size: 12px; color: var(--muted); }
-.kpi .v { font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 13px 14px; display: grid; gap: 3px; min-width: 0; box-shadow: var(--shadow); position: relative; overflow: hidden; }
+.kpi::before { content: ""; position: absolute; left: 0; top: 14px; bottom: 14px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent); opacity: .85; }
+.kpi .l { font-size: 11.5px; color: var(--muted); font-weight: 600; line-height: 1.3; }
+.kpi .v { font-size: 22px; font-weight: 750; font-variant-numeric: tabular-nums; letter-spacing: -.3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kpi .c { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; min-height: 1.2em; }
 .up { color: var(--ok); } .down { color: var(--bad); } .flat { color: var(--muted); }
 .chart { position: relative; min-height: 200px; }
 .chart svg { display: block; width: 100%; overflow: visible; }
 .chart text { font-size: 11px; fill: var(--muted); }
-.chart text.val { fill: var(--fg); font-weight: 600; }
-.grid line { stroke: var(--line); }
-.tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 4px 16px rgba(0,0,0,.18); border-radius: 8px; padding: 6px 9px; font-size: 12px; max-width: 220px; z-index: 5; }
+.chart text.val { fill: var(--fg); font-weight: 700; }
+.grid line { stroke: var(--line); stroke-dasharray: 3 3; }
+.tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 8px 24px rgba(0,0,0,.18); border-radius: 12px; padding: 8px 11px; font-size: 12px; max-width: 230px; z-index: 5; }
 .tip b { display: block; margin-bottom: 2px; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); }
-.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
-.tw { overflow-x: auto; margin: 0 -4px; }
-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-th { text-align: left; color: var(--muted); font-weight: 600; padding: 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
-td { padding: 7px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+.tw { overflow-x: auto; margin: 0 -16px; padding: 0 16px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; color: var(--muted); font-weight: 600; font-size: 11.5px; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; background: var(--panel2); }
+th:first-child { border-radius: 8px 0 0 8px; } th:last-child { border-radius: 0 8px 8px 0; }
+th { border-bottom: 0; }
+td { padding: 9px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
 td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
-.sig { display: grid; gap: 4px; padding: 10px 0; border-bottom: 1px solid var(--line); }
-.sig:last-child { border-bottom: 0; }
-.sig .h { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; background: color-mix(in srgb, currentColor 14%, transparent); }
+.sig { display: grid; gap: 4px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.sig:first-child { padding-top: 0; }
+.sig:last-child { border-bottom: 0; padding-bottom: 0; }
+.sig .h { display: flex; align-items: center; gap: 10px; font-weight: 650; }
 .sig p { margin: 0; font-size: 12.5px; color: var(--muted); }
-ul.rules { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 13px; }
-.err { color: var(--bad); font-size: 13px; }
-.period { display: grid; gap: 8px; }
+ul.rules { margin: 0; padding-left: 18px; display: grid; gap: 8px; font-size: 13.5px; }
+.err { color: var(--bad); font-size: 13px; background: color-mix(in srgb, var(--bad) 10%, transparent); border-radius: 12px; padding: 10px 12px; }
+.period { display: grid; gap: 8px; padding: 12px 14px; }
 .prow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.prow label { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
-.period select { font: inherit; font-size: 14px; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 8px; max-width: 100%; }
-#periodSel { flex: 1; min-width: 0; font-weight: 600; }
-.period button { font: inherit; font-size: 13px; font-weight: 600; color: #fff; background: var(--accent); border: 0; border-radius: 8px; padding: 8px 14px; }
+.prow label { font-size: 12px; color: var(--muted); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.period select, input.search { font: inherit; font-size: 14px; color: var(--fg); background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; padding: 9px 12px; max-width: 100%; }
+#periodSel, #gPeriodSel { flex: 1; min-width: 0; font-weight: 650; }
+.period button { font: inherit; font-size: 13px; font-weight: 650; color: #fff; background: var(--accent); border: 0; border-radius: 12px; padding: 9px 16px; }
+input.search { width: 100%; }
 .empty { color: var(--muted); font-size: 13px; padding: 20px 0; text-align: center; }
 a { color: var(--accent); }
+tr.click { cursor: pointer; }
+tr.click:active td { background: var(--panel2); }
+tr.sel td { background: var(--accent-soft); font-weight: 650; }
+.two { display: grid; gap: 14px; }
+@media (min-width: 720px) { .two { grid-template-columns: 1fr 1fr; } }
+ul.src { margin: 0; padding-left: 18px; display: grid; gap: 8px; font-size: 13px; }
+p.foot { text-align: center; }
+.card { scroll-margin-top: 130px; }
 </style>
 </head>
 <body>
 <header>
   <div class="top">
+    <div class="brand" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 11l1.6-4.2A2 2 0 0 1 8.5 5.5h7a2 2 0 0 1 1.9 1.3L19 11"/><path d="M3 15.5V13a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M6 16.5v2M18 16.5v2M6.5 13.8h1.5M16 13.8h1.5"/></svg></div>
     <div style="flex:1;min-width:0">
       <h1>Georgia Car Market</h1>
       <div class="status" id="status">Loading…</div>
     </div>
-    <button class="refresh" id="refresh" type="button">Refresh</button>
+    <button class="refresh" id="refresh" type="button" aria-label="Refresh data"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button>
   </div>
+  <nav id="tabs" aria-label="Sub sections"></nav>
   <div class="progress"><div id="bar"></div></div>
-  <nav id="tabs">
-    <button type="button" data-tab="overview" class="on">Overview</button>
-    <button type="button" data-tab="fuel">Fuel types</button>
-    <button type="button" data-tab="countries">Countries</button>
-    <button type="button" data-tab="advice">Stock advice</button>
-    <button type="button" data-tab="brands">Brands &amp; rules</button>
-  </nav>
 </header>
+<nav id="bottom" aria-label="Main sections"></nav>
 
 <main>
   <div id="error" class="err" hidden></div>
@@ -111,6 +136,114 @@ a { color: var(--accent); }
     </div>
     <p class="note" id="periodNote"></p>
   </div>
+
+  <div class="card period" id="gBar" hidden>
+    <div class="prow"><label for="gPeriodSel">Period</label><select id="gPeriodSel" aria-label="Registration period" style="flex:1;min-width:0;font-weight:600"></select></div>
+    <p class="note" id="gPeriodNote"></p>
+    <p class="note" id="gStatus"></p>
+  </div>
+
+  <section id="gbrands" hidden>
+    <div class="kpis" id="gKpis"></div>
+    <div class="card">
+      <h2>Brands ranked by first registrations</h2>
+      <p class="note">Top 25 brands. Tap a brand for its models and history. "Share Δ" = change in market share, in percentage points.</p>
+      <div class="tw"><table id="brandTable"></table></div>
+    </div>
+    <div class="card" id="brandDetail">
+      <h2 id="brandDetailTitle">Brand</h2>
+      <p class="note" id="brandDetailNote"></p>
+      <div class="chart" id="brandYearChart"></div>
+      <h3>Models of this brand in the selected period</h3>
+      <div class="tw"><table id="brandModels"></table></div>
+    </div>
+    <div class="card">
+      <h2>Top brands over time</h2>
+      <p class="note" id="brandTrendNote"></p>
+      <div class="legend" id="brandTrendLegend"></div>
+      <div class="chart" id="brandTrend"></div>
+    </div>
+  </section>
+
+  <section id="gmodels" hidden>
+    <div class="card">
+      <h2 id="modelTitle">Top models</h2>
+      <input class="search" id="mSearch" type="search" placeholder="Search a brand or model, e.g. CAMRY" aria-label="Search models">
+      <div class="tw"><table id="modelTable"></table></div>
+    </div>
+    <div class="two">
+      <div class="card"><h2>Rising fastest</h2><p class="note">At least 200 registrations now and 50 before.</p><div class="tw"><table id="risers"></table></div></div>
+      <div class="card"><h2>Falling fastest</h2><p class="note">Models that had at least 300 registrations before.</p><div class="tw"><table id="fallers"></table></div></div>
+    </div>
+    <div class="card"><h2>New in the top lists</h2><p class="note">At least 100 registrations now, none in the comparison period.</p><div class="tw"><table id="freshModels"></table></div></div>
+    <div class="card">
+      <h2>Top models over time</h2>
+      <p class="note" id="modelTrendNote"></p>
+      <div class="legend" id="modelTrendLegend"></div>
+      <div class="chart" id="modelTrend"></div>
+    </div>
+  </section>
+
+  <section id="gmix" hidden>
+    <div class="card"><h2 id="mixTitle">What Georgia registered</h2><h3>Fuel</h3><div class="tw"><table id="fuelRegTable"></table></div></div>
+    <div class="card"><h2>Fuel share of registrations per year</h2><div class="legend" id="fuelYearLegend"></div><div class="chart" id="fuelYearChart"></div></div>
+    <div class="two">
+      <div class="card"><h2>Body type</h2><div class="tw"><table id="bodyTable"></table></div></div>
+      <div class="card"><h2>Engine size</h2><div class="tw"><table id="engineTable"></table></div></div>
+    </div>
+    <div class="card"><h2>Body type share per year</h2><div class="legend" id="bodyYearLegend"></div><div class="chart" id="bodyYearChart"></div></div>
+    <div class="two">
+      <div class="card"><h2>Age of vehicle at registration</h2><div class="tw"><table id="ageTable"></table></div></div>
+      <div class="card"><h2>Colour</h2><div class="tw"><table id="colorTable"></table></div></div>
+    </div>
+    <div class="card"><h2>Region</h2><div class="tw"><table id="regionTable"></table></div></div>
+    <div class="card"><h2 id="nuTitle">Passenger cars imported: new vs used</h2><p class="note">Geostat customs data. Includes cars later re-exported.</p><div class="tw"><table id="nuTable"></table></div>
+      <div class="legend"><span><i style="background:var(--c-ev)"></i>Electric</span><span><i style="background:var(--c-hev)"></i>Hybrid</span><span><i style="background:var(--gold)"></i>New cars, any fuel</span></div>
+      <div class="chart" id="nuChart"></div></div>
+    <div class="card"><h2>Vehicle fleet</h2><p class="note" id="fleetNote"></p><div class="chart" id="fleetChart" style="min-height:180px"></div></div>
+    <div class="card"><h2 id="fleetMixTitle">All registered vehicles</h2><div class="two"><div class="tw"><table id="fleetFuelTable"></table></div><div class="tw"><table id="fleetAgeTable"></table></div></div></div>
+    <div class="card"><h2>Average fuel prices in Georgia (GEL per litre)</h2><div class="legend"><span><i style="background:var(--c-pet)"></i>Petrol</span><span><i style="background:var(--c-dsl)"></i>Diesel</span><span><i style="background:#d6b27c"></i>Gas</span></div><div class="chart" id="fuelPriceChart" style="min-height:180px"></div></div>
+  </section>
+
+  <section id="macro" hidden>
+    <p class="note" id="mStatus"></p>
+    <div class="kpis" id="mKpis"></div>
+    <div class="card"><h2>What the economy means for car demand</h2><ul class="rules" id="macroMeaning"></ul><p class="note">Worked out from the figures on this page. A rule of thumb, not financial advice.</p></div>
+    <div class="card"><h2>Can people afford cars?</h2><p class="note">Average monthly salary (Geostat) converted at the average NBG dollar rate, against the average customs price of an imported car (UN Comtrade).</p><div class="tw"><table id="affTable"></table></div></div>
+    <div class="two">
+      <div class="card"><h2>Real GDP growth by quarter</h2><div class="chart" id="gdpChart" style="min-height:180px"></div></div>
+      <div class="card"><h2>Inflation (prices vs a year earlier)</h2><div class="chart" id="cpiChart" style="min-height:180px"></div></div>
+    </div>
+    <div class="two">
+      <div class="card"><h2>Lari exchange rate (GEL per USD / EUR)</h2><div class="legend"><span><i style="background:var(--accent)"></i>USD</span><span><i style="background:var(--gold)"></i>EUR</span></div><div class="chart" id="fxChart" style="min-height:180px"></div></div>
+      <div class="card"><h2>Average monthly salary (GEL)</h2><div class="chart" id="wageChart" style="min-height:180px"></div></div>
+    </div>
+    <div class="two">
+      <div class="card"><h2>GDP growth and inflation by year</h2><div class="tw"><table id="imfTable"></table></div></div>
+      <div class="card"><h2>NBG policy rate decisions this year</h2><div class="tw"><table id="rateTable"></table></div></div>
+    </div>
+    <div class="card"><h2>World Bank indicators</h2><div class="tw"><table id="wbTable"></table></div></div>
+  </section>
+
+  <section id="world" hidden>
+    <p class="note" id="wStatus"></p>
+    <div class="card"><h2 id="expTitle">Car exports by the main car-making countries</h2><p class="note">Shows where world car supply is moving: China's rise means more Chinese brands (BYD, Geely, Chery) on the market.</p><div class="tw"><table id="expTable"></table></div></div>
+    <div class="card"><h2>Cars exported per year</h2><div class="legend" id="expLegend"></div><div class="chart" id="expChart"></div></div>
+    <div class="card"><h2>Electric share of car exports</h2><div class="legend" id="expEvLegend"></div><div class="chart" id="expEvChart" style="min-height:180px"></div></div>
+    <div class="card"><h2 id="mktTitle">Car imports of Georgia's re-export markets</h2><p class="note">Demand in the countries that buy cars re-exported from Georgia.</p><div class="tw"><table id="mktTable"></table></div><div class="legend" id="mktLegend"></div><div class="chart" id="mktChart"></div></div>
+    <div class="card"><h2>EU new-car registrations by fuel</h2><p class="note" id="euNote"></p><div class="legend" id="euLegend"></div><div class="chart" id="euChart"></div></div>
+    <div class="card">
+      <h2>Largest carmakers worldwide, 2025</h2>
+      <p class="note">Fixed figures from the companies' own annual sales reports. No free official source publishes world sales by brand or model.</p>
+      <div class="tw"><table>
+        <tr><th>Group</th><th class="n">Vehicles sold</th><th class="n">vs 2024</th></tr>
+        <tr><td>Toyota (incl. Lexus, Daihatsu, Hino)</td><td class="n">11.3M</td><td class="n up">+4.6%</td></tr>
+        <tr><td>Volkswagen Group</td><td class="n">8.98M</td><td class="n down">−0.5%</td></tr>
+        <tr><td>Hyundai Motor Group (Hyundai, Kia)</td><td class="n">7.3M</td><td class="n">–</td></tr>
+        <tr><td>BYD, electric passenger cars only</td><td class="n">2.26M</td><td class="n up">+27%</td></tr>
+      </table></div>
+    </div>
+  </section>
 
   <section id="overview">
     <div class="kpis" id="kpis"></div>
@@ -169,6 +302,15 @@ a { color: var(--accent); }
       <div id="signals"></div>
     </div>
     <div class="card">
+      <h2>Models to stock, from registrations</h2>
+      <p class="note" id="modelSignalsNote"></p>
+      <div id="modelSignals"></div>
+    </div>
+    <div class="card">
+      <h2>Brands gaining and losing</h2>
+      <div id="brandSignals"></div>
+    </div>
+    <div class="card">
       <h2>Buying rules after the April 2026 excise reform</h2>
       <ul class="rules">
         <li>Buy <b>left-hand-drive</b> cars only. Right-hand-drive cars pay 3x excise (RHD electric: flat GEL 3,000).</li>
@@ -183,40 +325,6 @@ a { color: var(--accent); }
 
   <section id="brands" hidden>
     <div class="card">
-      <h2>Top models by first registration, Jan–Sep 2026</h2>
-      <p class="note">From research compiled November 2026 (Geostat via marketentry.ge). Not updated automatically: no free live source publishes brand or model data.</p>
-      <div class="tw"><table>
-        <tr><th>Model</th><th class="n">Registrations</th></tr>
-        <tr><td>Subaru Forester</td><td class="n">3,060</td></tr>
-        <tr><td>Toyota Camry</td><td class="n">2,801</td></tr>
-        <tr><td>VW Jetta</td><td class="n">2,776</td></tr>
-        <tr><td>Tesla Model 3</td><td class="n">2,581</td></tr>
-        <tr><td>Hyundai Elantra</td><td class="n">2,154</td></tr>
-      </table></div>
-    </div>
-    <div class="card">
-      <h2>Electric registrations by brand, Q3 2026</h2>
-      <div class="tw"><table>
-        <tr><th>Brand</th><th class="n">Cars</th><th class="n">vs Q3 2025</th></tr>
-        <tr><td>Tesla</td><td class="n">2,593</td><td class="n up">+154%</td></tr>
-        <tr><td>Nissan</td><td class="n">433</td><td class="n up">+53%</td></tr>
-        <tr><td>Chevrolet</td><td class="n">190</td><td class="n up">+153%</td></tr>
-      </table></div>
-      <p class="note">MIA via BM.GE.</p>
-    </div>
-    <div class="card">
-      <h2>Most listed for sale, Jan–Mar 2026</h2>
-      <div class="tw"><table>
-        <tr><th>Model</th><th class="n">Listings</th></tr>
-        <tr><td>Toyota Camry</td><td class="n">6,000+</td></tr>
-        <tr><td>Toyota RAV4</td><td class="n">5,300+</td></tr>
-        <tr><td>BMW X5</td><td class="n">~3,000</td></tr>
-        <tr><td>Ford Fusion</td><td class="n">2,756</td></tr>
-        <tr><td>Subaru Forester</td><td class="n">2,333</td></tr>
-      </table></div>
-      <p class="note">AutoBridge. Listings include salvage and transit stock, so they are not the same as fast sales.</p>
-    </div>
-    <div class="card">
       <h2>Excise examples (GEL)</h2>
       <div class="tw"><table>
         <tr><th>Car</th><th class="n">Before 2 Apr 2026</th><th class="n">Now</th></tr>
@@ -228,11 +336,27 @@ a { color: var(--accent); }
         <tr><td>Electric, any age</td><td class="n">0</td><td class="n">0</td></tr>
       </table></div>
     </div>
+    <div class="card">
+      <h2>Data sources</h2>
+      <ul class="src">
+        <li><b>Geostat vehicle statistics</b> (<a href="https://automobile.geostat.ge/en">automobile.geostat.ge</a>): first registrations by brand, model, fuel, body, engine, age, colour and region; vehicle fleet; vehicle imports new vs used; fuel prices. Quarterly.</li>
+        <li><b>UN Comtrade</b> (<a href="https://comtradeapi.un.org/">comtradeapi.un.org</a>): Georgia's customs figures as reported by Geostat (car imports and re-exports by fuel/engine type and country, monthly), plus world car exports and Georgia's re-export markets, yearly.</li>
+        <li><b>Geostat statistical database</b> (<a href="https://pc-axis.geostat.ge/">pc-axis.geostat.ge</a>): GDP growth, inflation, average salary.</li>
+        <li><b>National Bank of Georgia</b> (<a href="https://nbg.gov.ge/">nbg.gov.ge</a>): official exchange rates and policy rate.</li>
+        <li><b>World Bank</b>: yearly indicators for Georgia.</li>
+        <li><b>Eurostat</b>: EU new-car registrations by fuel.</li>
+        <li>Excise rules: Georgian Tax Code as amended in April 2026 (fixed in the app).</li>
+      </ul>
+      <p class="note">Geostat allows free reuse of its data with credit to Geostat.</p>
+    </div>
   </section>
 
-  <p class="note" style="text-align:center">Live data: <a href="https://comtradeapi.un.org/">UN Comtrade</a> (customs data reported by Geostat), about two months behind. Imports include cars later re-exported.</p>
+  <p class="note foot">Official data downloaded by the app: Geostat, UN Comtrade, National Bank of Georgia, World Bank, Eurostat. See "Rules &amp; sources".</p>
 </main>
 
+<script src="geo.js"></script>
+<script src="macro.js"></script>
+<script src="world.js"></script>
 <script>
 'use strict';
 /* ---------- constants ---------- */
@@ -281,6 +405,10 @@ window.__nativeDone = (id, code, body) => { const p = pending[id]; if (p) { dele
 function rawGet(url) {
   if (window.Native && Native.get) return new Promise((res) => { const id = 'r' + (++seq); pending[id] = res; Native.get(id, url); });
   return fetch(url).then(async (r) => ({code: r.status, body: await r.text()})).catch((e) => ({code: -1, body: String(e)}));
+}
+function rawPost(url, body) {
+  if (window.Native && Native.post) return new Promise((res) => { const id = 'r' + (++seq); pending[id] = res; Native.post(id, url, body); });
+  return fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body}).then(async (r) => ({code: r.status, body: await r.text()})).catch((e) => ({code: -1, body: String(e)}));
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function getJson(url) {
@@ -616,7 +744,20 @@ function stackChart(box, cats, rows) {
 }
 
 /* ---------- render ---------- */
+const CT_TABS = ['overview', 'fuel', 'countries', 'advice'], G_TABS = ['gbrands', 'gmodels', 'gmix'];
+let curT = 'overview';
+try { const t0 = localStorage.getItem('gcm_tab'); if (t0 && document.getElementById(t0)) curT = t0; } catch (e) {}
+function curTab() { return curT; }
 function render() {
+  const t = curTab();
+  document.getElementById('periodBar').hidden = CT_TABS.indexOf(t) < 0;
+  document.getElementById('gBar').hidden = G_TABS.indexOf(t) < 0;
+  try { renderCT(); } catch (e) { console.error(e); }
+  try { renderGeo(); geoAdvice(); } catch (e) { console.error(e); }
+  try { renderMacro(); } catch (e) { console.error(e); }
+  try { renderWorld(); } catch (e) { console.error(e); }
+}
+function renderCT() {
   const lm = latestMonth();
   const upd = store.updated ? new Date(store.updated) : null;
   if (!busy || !hasAny()) setStatus(hasAny()
@@ -795,17 +936,46 @@ function renderAdvice(w) {
 }
 
 /* ---------- tabs and start ---------- */
-document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('click', () => {
-  document.querySelectorAll('#tabs button').forEach((x) => x.classList.toggle('on', x === b));
-  document.querySelectorAll('main > section').forEach((sec) => { sec.hidden = sec.id !== b.dataset.tab; });
+const ICONS = {
+  market: '<path d="M4 20V11M10 20V5M16 20v-6M21 20H3"/>',
+  brands: '<path d="M5 11l1.6-4.2A2 2 0 0 1 8.5 5.5h7a2 2 0 0 1 1.9 1.3L19 11"/><path d="M3 15.5V13a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M6 16.5v2M18 16.5v2"/>',
+  econ: '<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
+  world: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+  advice: '<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/>'
+};
+const NAV = [
+  {id: 'market', label: 'Market', tabs: [['overview', 'Overview'], ['gmix', 'Market mix'], ['fuel', 'Imports by fuel'], ['countries', 'Countries']]},
+  {id: 'brands', label: 'Brands', tabs: [['gbrands', 'Brands'], ['gmodels', 'Models']]},
+  {id: 'econ', label: 'Economy', tabs: [['macro', 'Economy']]},
+  {id: 'world', label: 'World', tabs: [['world', 'International']]},
+  {id: 'advice', label: 'Advice', tabs: [['advice', 'Stock advice'], ['brands', 'Rules & sources']]}
+];
+const lastSub = {};
+function navOf(t) { return NAV.find((g) => g.tabs.some((x) => x[0] === t)) || NAV[0]; }
+function showTab(t) {
+  curT = t; const g = navOf(t); lastSub[g.id] = t;
+  try { localStorage.setItem('gcm_tab', t); } catch (e) {}
+  document.querySelectorAll('main > section').forEach((sec) => { sec.hidden = sec.id !== t; });
+  document.querySelectorAll('#bottom button').forEach((b) => b.classList.toggle('on', b.dataset.g === g.id));
+  const tabs = document.getElementById('tabs');
+  tabs.replaceChildren(...(g.tabs.length > 1 ? g.tabs.map(([id, label]) => { const b = h('button', {type: 'button', cls: id === t ? 'on' : '', text: label}); b.addEventListener('click', () => showTab(id)); return b; }) : []));
   window.scrollTo(0, 0);
   render();
+}
+document.getElementById('bottom').replaceChildren(...NAV.map((g) => {
+  const b = h('button', {type: 'button'}); b.dataset.g = g.id;
+  b.innerHTML = '<span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true">' + ICONS[g.id] + '</svg></span>';
+  b.appendChild(h('span', {text: g.label}));
+  b.addEventListener('click', () => showTab(lastSub[g.id] || g.tabs[0][0]));
+  return b;
 }));
-document.getElementById('refresh').addEventListener('click', () => sync(true));
+document.getElementById('refresh').addEventListener('click', () => { geoSync(true); macroSync(true); sync(true).then(() => { if (!document.getElementById('world').hidden) { wTriedNow.clear(); wErr = ''; worldSync(true); } }); });
 let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(render, 200); });
-render();
+showTab(curT);
 const age = store.updated ? (Date.now() - new Date(store.updated).getTime()) / 864e5 : 99;
 if (!hasAny() || age > 3) sync(false);
+geoSync(false);
+macroSync(false);
 </script>
 </body>
 </html>

@@ -1,17 +1,39 @@
 # Georgia Car Market
 
-A one-screen Android app that shows Georgia's passenger car market:
-imports, re-exports, fuel and engine types, origin and destination countries,
-and add / hold / reduce stock signals.
+An Android app that analyses Georgia's car market from official data it
+downloads itself. Sections (bottom bar):
 
-The app downloads its own data every time you open it (if the saved data is
-more than 3 days old) or tap **Refresh**. The data comes from the free
-[UN Comtrade](https://comtradeapi.un.org/) service, which holds Georgia's
-customs figures as reported by Geostat (HS code 8703, passenger cars).
-New months appear about two months after they end.
+- **Market**: overview of car imports and re-exports (monthly), market mix of
+  new registrations (fuel, body, engine size, age, colour, region, new vs used
+  imports, vehicle fleet, fuel prices), imports by fuel/engine type, origin and
+  destination countries.
+- **Brands**: brands and models ranked by first registrations in Georgia,
+  growth vs the same period a year earlier, brand history and models, risers,
+  fallers and newcomers, searchable model list.
+- **Economy**: exchange rates, GDP growth, inflation, salaries, policy rate,
+  car affordability and what it means for demand.
+- **World**: car exports of the main car-making countries, car imports of
+  Georgia's re-export markets, EU registrations by fuel.
+- **Advice**: add / hold / reduce signals by fuel type, model and brand,
+  excise rules and data sources.
 
-Brand and model figures, and the excise table, are fixed values from research
-done in November 2026: no free live source publishes them.
+## Data sources (all official, free, no account)
+
+| Source | What |
+|---|---|
+| Geostat vehicle statistics (automobile.geostat.ge, data service autoapi.geostat.ge) | Registrations by brand, model, fuel, body, engine, age, colour, region (quarterly from 2017); fleet; vehicle imports new vs used; fuel prices |
+| UN Comtrade (comtradeapi.un.org) | Georgia's customs data (HS 8703) by fuel/engine type and country, monthly; world exporters and re-export markets, yearly |
+| Geostat PxWeb database (pc-axis.geostat.ge) | GDP growth, inflation, average salary |
+| National Bank of Georgia (nbg.gov.ge) | Official exchange rates, policy rate decisions |
+| World Bank (api.worldbank.org) | Yearly indicators for Georgia |
+| Eurostat | EU new-car registrations by fuel |
+
+Geostat allows free reuse of its data with credit to Geostat. The app
+refreshes when opened (Geostat and customs data older than 3 days, economy
+data older than 1 day) or when you tap the refresh button.
+
+The excise rules and the world carmaker table are fixed values from research
+done in November 2026.
 
 ## Getting the APK
 
@@ -30,6 +52,9 @@ named `KEYSTORE_B64` holding a base64-encoded Android debug keystore
 
 ## Project layout
 
-- `app/src/main/assets/index.html` — the whole dashboard (HTML, CSS, JavaScript)
-- `app/src/main/java/ge/carmarket/app/MainActivity.java` — shows the page and downloads data for it
-- `.github/workflows/build.yml` — cloud build
+- `app/src/main/assets/index.html`: page layout, design, customs data, charts
+- `app/src/main/assets/geo.js`: Geostat registrations (brands, models, market mix, model signals)
+- `app/src/main/assets/macro.js`: economy data
+- `app/src/main/assets/world.js`: international market
+- `app/src/main/java/ge/carmarket/app/MainActivity.java`: shows the page and downloads data for it (only from the hosts above)
+- `.github/workflows/build.yml`: cloud build
