@@ -16,6 +16,10 @@ downloads itself. Sections (bottom bar):
   Georgia's re-export markets, EU registrations by fuel.
 - **Advice**: add / hold / reduce signals by fuel type, model and brand,
   excise rules and data sources.
+- **Import a brand** (under Advice): rising brands with no official importer
+  in Georgia, ranked for a dealer who wants to become their official
+  distributor. Live Georgian registrations per brand plus researched global
+  sales, regional presence, how to apply and risks.
 
 ## Data sources (all official, free, no account)
 
@@ -32,7 +36,8 @@ Geostat allows free reuse of its data with credit to Geostat. The app
 refreshes when opened (Geostat and customs data older than 3 days, economy
 data older than 1 day) or when you tap the refresh button.
 
-The excise rules and the world carmaker table are fixed values from research
+The excise rules, the world carmaker table and the brand facts on
+"Import a brand" are fixed values from research
 done in November 2026.
 
 ## Getting the APK

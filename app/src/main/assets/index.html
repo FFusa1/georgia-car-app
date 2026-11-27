@@ -90,6 +90,8 @@ th { border-bottom: 0; }
 td { padding: 9px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
 tr:last-child td { border-bottom: 0; }
 td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pill.up { color: var(--ok); } .pill.down { color: var(--bad); } .pill.flat { color: var(--muted); } .pill.acc { color: var(--accent); }
+table.facts td.k { color: var(--muted); font-weight: 600; width: 34%; }
 .pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; background: color-mix(in srgb, currentColor 14%, transparent); }
 .sig { display: grid; gap: 4px; padding: 12px 0; border-bottom: 1px solid var(--line); }
 .sig:first-child { padding-top: 0; }
@@ -331,6 +333,47 @@ p.foot { text-align: center; }
     </div>
   </section>
 
+  <section id="dealer" hidden>
+    <div class="card">
+      <h2>Brands you could import as official dealer</h2>
+      <p class="note">Rising brands with <b>no confirmed official importer in Georgia</b>, ranked out of 100 (60+ strong, 50+ good, 40+ watch). The score adds live Georgian demand (cars already brought in privately, from Geostat) to researched facts: global growth, fit for Georgia (hybrid/electric, SUVs, price) and how open the seat is. Tap a brand for details. A screening tool, not investment advice: confirm with each brand before investing.</p>
+      <p class="note" id="dStatus"></p>
+      <div class="tw"><table id="dTable"></table></div>
+    </div>
+    <div class="card" id="dDetail">
+      <h2 id="dDetailTitle">Brand</h2>
+      <div class="chart" id="dChart"></div>
+      <p class="note">Cars of this brand registered in Georgia per year (all imported privately so far).</p>
+      <div class="tw"><table id="dFacts" class="facts"></table></div>
+      <h3>How the score is made</h3>
+      <div class="tw"><table id="dParts"></table></div>
+    </div>
+    <div class="card">
+      <h2>Top candidates: Georgian registrations</h2>
+      <div class="legend" id="dTrendLegend"></div>
+      <div class="chart" id="dTrend"></div>
+      <p class="note" id="dTesla"></p>
+    </div>
+    <div class="card">
+      <h2>Already taken: official dealers in Georgia</h2>
+      <div class="tw"><table id="dTaken"></table></div>
+      <p class="note">These brands already have an exclusive or official distributor, so a new dealer would have to work under them.</p>
+    </div>
+    <div class="card">
+      <h2>How to become an official distributor</h2>
+      <ul class="rules">
+        <li>Small markets like Georgia usually get <b>one exclusive national distributor</b>. Brands prefer groups that already run dealerships.</li>
+        <li>Typical steps (BYD's published process): application with company profile and business plan → online presentation → site visit → letter of intent → showroom build and staff training → dealer agreement.</li>
+        <li>Expect to show strong finances, a showroom and service workshop to brand standards, a parts stock and a first order of cars. Brands do not publish minimum amounts.</li>
+        <li>Rough timeline (industry practice, not a published figure): 3–9 months to a letter of intent, 6–12 months to opening.</li>
+        <li>Ask whether the seat is free first: Chery's dealer may hold Omoda/Jaecoo and Exeed, Changan's dealer may hold Avatr, the Geely/Zeekr dealer may claim Lynk &amp; Co, the BYD dealer will likely get Denza.</li>
+        <li>Brands often hand Georgia to a Caucasus group (Hongqi went to an Armenian distributor). Talking to the Armenian or Azerbaijani importer can be a shortcut.</li>
+        <li>Since April 2026 electric cars pay no excise and new hybrids get 60% off: plug-in, range-extender and electric line-ups fit best.</li>
+        <li>Risk: Georgia bans re-exporting US/EU-made cars to Russia and Belarus. Brands and customs watch distributors whose volumes are far above local demand.</li>
+      </ul>
+    </div>
+  </section>
+
   <section id="brands" hidden>
     <div class="card">
       <h2>Excise examples (GEL)</h2>
@@ -354,6 +397,7 @@ p.foot { text-align: center; }
         <li><b>World Bank</b>: yearly indicators for Georgia.</li>
         <li><b>Eurostat</b>: EU new-car registrations by fuel.</li>
         <li>Excise rules: Georgian Tax Code as amended in April 2026 (fixed in the app).</li>
+        <li>Import a brand: Georgian registrations per brand are live from Geostat; global sales, official dealers in Georgia and nearby countries, and how to apply come from company reports and news researched in November 2026 (fixed in the app).</li>
       </ul>
       <p class="note">Geostat allows free reuse of its data with credit to Geostat.</p>
     </div>
@@ -365,6 +409,7 @@ p.foot { text-align: center; }
 <script src="geo.js"></script>
 <script src="macro.js"></script>
 <script src="world.js"></script>
+<script src="dealer.js"></script>
 <script>
 'use strict';
 /* ---------- constants ---------- */
@@ -774,6 +819,7 @@ function render() {
   try { renderGeo(); geoAdvice(); } catch (e) { console.error(e); }
   try { renderMacro(); } catch (e) { console.error(e); }
   try { renderWorld(); } catch (e) { console.error(e); }
+  try { renderDealer(); } catch (e) { console.error(e); }
 }
 function renderCT() {
   const lm = latestMonth();
@@ -972,7 +1018,7 @@ const NAV = [
   {id: 'brands', label: 'Brands', tabs: [['gbrands', 'Brands'], ['gmodels', 'Models']]},
   {id: 'econ', label: 'Economy', tabs: [['macro', 'Economy']]},
   {id: 'world', label: 'World', tabs: [['world', 'International']]},
-  {id: 'advice', label: 'Advice', tabs: [['advice', 'Stock advice'], ['brands', 'Rules & sources']]}
+  {id: 'advice', label: 'Advice', tabs: [['advice', 'Stock advice'], ['dealer', 'Import a brand'], ['brands', 'Rules & sources']]}
 ];
 const lastSub = IS_WEB && !RELAY ? {market: 'gmix'} : {};
 function navOf(t) { return NAV.find((g) => g.tabs.some((x) => x[0] === t)) || NAV[0]; }
@@ -993,7 +1039,7 @@ document.getElementById('bottom').replaceChildren(...NAV.map((g) => {
   b.addEventListener('click', () => showTab(lastSub[g.id] || g.tabs[0][0]));
   return b;
 }));
-document.getElementById('refresh').addEventListener('click', () => { geoSync(true); macroSync(true); sync(true).then(() => { if (!document.getElementById('world').hidden) { wTriedNow.clear(); wErr = ''; worldSync(true); } }); });
+document.getElementById('refresh').addEventListener('click', () => { if (!document.getElementById('dealer').hidden) dealerSync(true); geoSync(true); macroSync(true); sync(true).then(() => { if (!document.getElementById('world').hidden) { wTriedNow.clear(); wErr = ''; worldSync(true); } }); });
 let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(render, 200); });
 showTab(curT);
 const age = store.updated ? (Date.now() - new Date(store.updated).getTime()) / 864e5 : 99;
