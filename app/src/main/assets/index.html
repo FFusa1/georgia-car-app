@@ -3,6 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b2545">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Car Market">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
 <title>Georgia Car Market</title>
 <style>
 :root {
@@ -402,19 +410,28 @@ function save() { try { localStorage.setItem(KEY, JSON.stringify(store)); } catc
 /* ---------- networking (through the Android app, or fetch in a browser) ---------- */
 let seq = 0; const pending = {};
 window.__nativeDone = (id, code, body) => { const p = pending[id]; if (p) { delete pending[id]; p({code, body}); } };
+/* Web version (iPhone home-screen app): these sources block direct requests from a web page,
+   so they go through RELAY (a small relay locked to these hosts). Empty RELAY = not available on the web. */
+const IS_WEB = !(window.Native && Native.get);
+const RELAY = '';
+const NEEDS_RELAY = ['https://comtradeapi.un.org/', 'https://nbg.gov.ge/en/'];
+const NO_RELAY_MSG = 'Customs data is in the Android app only for now';
 function rawGet(url) {
-  if (window.Native && Native.get) return new Promise((res) => { const id = 'r' + (++seq); pending[id] = res; Native.get(id, url); });
+  if (!IS_WEB) return new Promise((res) => { const id = 'r' + (++seq); pending[id] = res; Native.get(id, url); });
+  if (NEEDS_RELAY.some((p) => url.indexOf(p) === 0)) { if (!RELAY) return Promise.resolve({code: -2, body: NO_RELAY_MSG}); url = RELAY + encodeURIComponent(url); }
   return fetch(url).then(async (r) => ({code: r.status, body: await r.text()})).catch((e) => ({code: -1, body: String(e)}));
 }
 function rawPost(url, body) {
   if (window.Native && Native.post) return new Promise((res) => { const id = 'r' + (++seq); pending[id] = res; Native.post(id, url, body); });
-  return fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body}).then(async (r) => ({code: r.status, body: await r.text()})).catch((e) => ({code: -1, body: String(e)}));
+  /* text/plain avoids the browser's pre-check, which the Geostat database does not answer */
+  return fetch(url, {method: 'POST', headers: {'Content-Type': 'text/plain'}, body}).then(async (r) => ({code: r.status, body: await r.text()})).catch((e) => ({code: -1, body: String(e)}));
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function getJson(url) {
   for (let i = 0; i < 6; i++) {
     const r = await rawGet(url);
     if (r.code === 429) { await sleep(2500 + i * 1500); continue; }
+    if (r.code === -2) throw new Error(r.body);
     if (r.code !== 200) throw new Error(r.code === -1 ? 'No connection (' + r.body + ')' : 'Data service error ' + r.code);
     await sleep(1100);
     return JSON.parse(r.body);
@@ -491,6 +508,7 @@ async function runJobs(jobs) {
 }
 async function sync(force) {
   if (busy) return;
+  if (IS_WEB && !RELAY) { render(); return; }
   const now = new Date(), cy = now.getFullYear(), cm = now.getMonth() + 1;
   const jobs = [];
   for (let y = 2018; y <= cy - 1; y++) {
@@ -745,7 +763,7 @@ function stackChart(box, cats, rows) {
 
 /* ---------- render ---------- */
 const CT_TABS = ['overview', 'fuel', 'countries', 'advice'], G_TABS = ['gbrands', 'gmodels', 'gmix'];
-let curT = 'overview';
+let curT = IS_WEB && !RELAY ? 'gbrands' : 'overview';
 try { const t0 = localStorage.getItem('gcm_tab'); if (t0 && document.getElementById(t0)) curT = t0; } catch (e) {}
 function curTab() { return curT; }
 function render() {
@@ -762,8 +780,14 @@ function renderCT() {
   const upd = store.updated ? new Date(store.updated) : null;
   if (!busy || !hasAny()) setStatus(hasAny()
     ? 'Data to ' + (lm ? mLabel(lm) : (latestFullYear() || '')) + (upd ? ' · checked ' + upd.toLocaleDateString('en-GB', {day: 'numeric', month: 'short'}) + ' ' + upd.toTimeString().slice(0, 5) : '')
-    : 'No data yet. Connect to the internet and tap Refresh.');
-  if (!hasAny()) return;
+    : IS_WEB && !RELAY ? 'Brands, Models, Market mix and Economy are live. ' + NO_RELAY_MSG + '.' : 'No data yet. Connect to the internet and tap Refresh.');
+  if (!hasAny()) {
+    if (IS_WEB && !RELAY) {
+      document.getElementById('periodNote').textContent = 'This page uses UN Comtrade customs data, which is in the Android app only for now. Brands, Models, Market mix and Economy are live here.';
+      document.getElementById('periodSel').hidden = true;
+    }
+    return;
+  }
   fillPeriodControls();
   const w = windowInfo();
   const note = document.getElementById('periodNote');
@@ -950,7 +974,7 @@ const NAV = [
   {id: 'world', label: 'World', tabs: [['world', 'International']]},
   {id: 'advice', label: 'Advice', tabs: [['advice', 'Stock advice'], ['brands', 'Rules & sources']]}
 ];
-const lastSub = {};
+const lastSub = IS_WEB && !RELAY ? {market: 'gmix'} : {};
 function navOf(t) { return NAV.find((g) => g.tabs.some((x) => x[0] === t)) || NAV[0]; }
 function showTab(t) {
   curT = t; const g = navOf(t); lastSub[g.id] = t;
@@ -976,6 +1000,7 @@ const age = store.updated ? (Date.now() - new Date(store.updated).getTime()) / 8
 if (!hasAny() || age > 3) sync(false);
 geoSync(false);
 macroSync(false);
+if (IS_WEB && location.protocol === 'https:' && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
 </html>

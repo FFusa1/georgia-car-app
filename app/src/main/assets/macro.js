@@ -74,7 +74,7 @@ async function macroSync(force) {
     const t = await pxTable(PX_WAGE, [{code: 'Sex, Sectors', selection: {filter: 'item', values: ['0']}}, {code: 'Economic Activity', selection: {filter: 'item', values: ['0']}}]);
     mac.wage = t.data.map((r) => [txt(t.meta, 2, r.key[2]), txt(t.meta, 3, r.key[3]), num(r.values[0])]).filter((r) => r[2] != null && r[1] !== 'annual').map(([y, q, v]) => ['Q' + (ROMAN[q] || q) + ' ' + y, v, +y, ROMAN[q] || 0]);
   });
-  await step('policy rate (NBG)', async () => {
+  if (!IS_WEB || RELAY) await step('policy rate (NBG)', async () => {
     const html = await getAny(NBG_MPC);
     const m = /"monetaryPolicyRates":(\[[^\]]*\])/.exec(html);
     if (!m) throw new Error('page format changed');
@@ -118,7 +118,7 @@ function renderMacro() {
     ['Inflation' + (cpiL ? ', ' + mLabel(cpiL[0]) : ''), cpiL ? cpiL[1].toFixed(1) + '%' : '–', {t: cpiP ? 'a year earlier ' + cpiP[1].toFixed(1) + '%' : '', c: 'flat'}],
     ['Average monthly salary' + (wL ? ', ' + wL[0] : ''), wL ? 'GEL ' + fN(wL[1]) : '–', chg(wP ? pct(wL[1], wP[1]) : null)],
     ['Salary in USD', wUsd ? '$' + fN(wUsd) : '–', {t: 'at today’s rate', c: 'flat'}],
-    ['NBG policy rate', rate ? rate[1].toFixed(2) + '%' : '–', {t: rate ? 'decided ' + new Date(rate[0]).toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'}) : '', c: 'flat'}],
+    ['NBG policy rate', rate ? rate[1].toFixed(2) + '%' : '–', {t: rate ? 'decided ' + new Date(rate[0]).toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'}) : IS_WEB && !RELAY ? 'in the Android app' : '', c: 'flat'}],
     ['Money sent home' + (remitL ? ', ' + remitL[0] : ''), remitL ? remitL[1].toFixed(1) + '%' : '–', {t: 'of GDP (World Bank)', c: 'flat'}]
   ];
   document.getElementById('mKpis').replaceChildren(...k.map(([l, v, c]) => h('div', {cls: 'kpi'}, [h('div', {cls: 'l', text: l}), h('div', {cls: 'v', text: v}), h('div', {cls: 'c ' + c.c, text: c.t || ''})])));

@@ -42,6 +42,19 @@ Every push to `main` builds the app on GitHub Actions and publishes
 phone, download the APK and open it. Android asks once to allow installs
 from your browser.
 
+## iPhone (home-screen web app)
+
+Every push also publishes the same app as a web app on GitHub Pages:
+**https://ffusa1.github.io/georgia-car-app/**. On an iPhone open it in Safari,
+tap **Share → Add to Home Screen**. It opens full screen with its own icon and
+updates itself.
+
+Brands, Models, Market mix, Economy and EU registrations work there. UN Comtrade
+data (Overview, Imports by fuel, Countries, world exports) and the NBG policy
+rate block requests from web pages, so they need a relay: put the relay's
+address in `RELAY` in `index.html` (for example
+`https://<name>.workers.dev/?u=`). Until then those parts say "Android app only".
+
 ## Keeping updates installable
 
 Android only installs an update over an existing app if both are signed with

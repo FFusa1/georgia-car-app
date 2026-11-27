@@ -54,3 +54,30 @@ jobs:
           gh release create latest GeorgiaCarMarket.apk \
             --title "Georgia Car Market (latest build)" \
             --notes "Download GeorgiaCarMarket.apk on your Android phone and open it to install. Built from commit ${GITHUB_SHA::7}."
+
+  web:
+    # Publishes the same app as a home-screen web app (iPhone: Safari > Share > Add to Home Screen)
+    # on the gh-pages branch, served by GitHub Pages.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble site
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq librsvg2-bin > /dev/null
+          mkdir _site
+          cp app/src/main/assets/* _site/
+          cp web/manifest.webmanifest web/sw.js _site/
+          for s in 180 192 512; do rsvg-convert -w $s -h $s web/icon.svg -o _site/icon-$s.png; done
+          sed -i "s/gcm-shell-v1/gcm-shell-${GITHUB_SHA::7}/" _site/sw.js
+          touch _site/.nojekyll
+
+      - name: Publish to gh-pages
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          cd _site
+          git init -q -b gh-pages
+          git add -A
+          git -c user.name="Georgia Car Market" -c user.email="noreply@example.com" commit -q -m "Web app from ${GITHUB_SHA::7}"
+          git push -q -f "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
