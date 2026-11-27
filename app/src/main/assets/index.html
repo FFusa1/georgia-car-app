@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Georgia Car Market</title>
+<style>
+:root {
+  --bg: #f4f6f9; --panel: #ffffff; --fg: #17212b; --muted: #5d6b7a; --line: #dde3ea;
+  --accent: #1f4e79; --gold: #c98a1b;
+  --ok: #1a7f4b; --warn: #a86a00; --bad: #c0392b;
+  --c-imp: #1f4e79; --c-exp: #d08a2a;
+  --c-pet: #7d8b99; --c-dsl: #4a5561; --c-hev: #2e8b57; --c-phev: #6bbf8a; --c-ev: #2f7fd1; --c-oth: #c3ccd5;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f151c; --panel: #17202a; --fg: #e8edf2; --muted: #9aa8b6; --line: #2a3643;
+    --accent: #7fb2e5; --gold: #e8b04b;
+    --ok: #4cc38a; --warn: #e0a534; --bad: #ef6b5b;
+    --c-imp: #5f9bd6; --c-exp: #e8a24b;
+    --c-pet: #8d9aa7; --c-dsl: #5e6b78; --c-hev: #4cbf7f; --c-phev: #8fd8a8; --c-ev: #5aa9f0; --c-oth: #46525e;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-text-size-adjust: 100%; }
+header { position: sticky; top: 0; z-index: 10; background: var(--accent); color: #fff; padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 0; }
+@media (prefers-color-scheme: dark) { header { background: #12304d; } }
+.top { display: flex; align-items: center; gap: 12px; }
+.top h1 { margin: 0; font-size: 18px; font-weight: 650; flex: 1; letter-spacing: .2px; }
+.status { font-size: 12px; opacity: .85; margin-top: 2px; }
+button.refresh { font: inherit; font-size: 13px; background: rgba(255,255,255,.16); color: #fff; border: 1px solid rgba(255,255,255,.35); border-radius: 999px; padding: 6px 14px; }
+button.refresh:disabled { opacity: .5; }
+.progress { height: 3px; background: rgba(255,255,255,.2); margin: 10px -16px 0; }
+.progress > div { height: 100%; width: 0; background: var(--gold); transition: width .3s; }
+nav { display: flex; gap: 2px; overflow-x: auto; margin: 0 -16px; padding: 0 10px; scrollbar-width: none; }
+nav::-webkit-scrollbar { display: none; }
+nav button { font: inherit; font-size: 13px; color: rgba(255,255,255,.75); background: none; border: 0; padding: 10px 10px 11px; white-space: nowrap; border-bottom: 3px solid transparent; }
+nav button.on { color: #fff; border-bottom-color: var(--gold); font-weight: 600; }
+main { padding: 16px; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px); display: grid; gap: 16px; max-width: 960px; margin: 0 auto; }
+section[hidden] { display: none; }
+section { display: grid; gap: 16px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 10px; min-width: 0; }
+h2 { margin: 0; font-size: 15px; font-weight: 650; }
+.note { margin: 0; color: var(--muted); font-size: 12px; }
+.kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (min-width: 640px) { .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 2px; min-width: 0; }
+.kpi .l { font-size: 12px; color: var(--muted); }
+.kpi .v { font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.kpi .c { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; min-height: 1.2em; }
+.up { color: var(--ok); } .down { color: var(--bad); } .flat { color: var(--muted); }
+.chart { position: relative; min-height: 200px; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.chart text { font-size: 11px; fill: var(--muted); }
+.chart text.val { fill: var(--fg); font-weight: 600; }
+.grid line { stroke: var(--line); }
+.tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 4px 16px rgba(0,0,0,.18); border-radius: 8px; padding: 6px 9px; font-size: 12px; max-width: 220px; z-index: 5; }
+.tip b { display: block; margin-bottom: 2px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.tw { overflow-x: auto; margin: 0 -4px; }
+table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+th { text-align: left; color: var(--muted); font-weight: 600; padding: 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 7px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.sig { display: grid; gap: 4px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.sig:last-child { border-bottom: 0; }
+.sig .h { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.sig p { margin: 0; font-size: 12.5px; color: var(--muted); }
+ul.rules { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 13px; }
+.err { color: var(--bad); font-size: 13px; }
+.empty { color: var(--muted); font-size: 13px; padding: 20px 0; text-align: center; }
+a { color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <div style="flex:1;min-width:0">
+      <h1>Georgia Car Market</h1>
+      <div class="status" id="status">Loading…</div>
+    </div>
+    <button class="refresh" id="refresh" type="button">Refresh</button>
+  </div>
+  <div class="progress"><div id="bar"></div></div>
+  <nav id="tabs">
+    <button type="button" data-tab="overview" class="on">Overview</button>
+    <button type="button" data-tab="fuel">Fuel types</button>
+    <button type="button" data-tab="countries">Countries</button>
+    <button type="button" data-tab="advice">Stock advice</button>
+    <button type="button" data-tab="brands">Brands &amp; rules</button>
+  </nav>
+</header>
+
+<main>
+  <div id="error" class="err" hidden></div>
+
+  <section id="overview">
+    <div class="kpis" id="kpis"></div>
+    <div class="card">
+      <h2>Cars imported and re-exported per year</h2>
+      <p class="note" id="annualNote">Number of passenger cars. The last year is year-to-date.</p>
+      <div class="legend"><span><i style="background:var(--c-imp)"></i>Imported</span><span><i style="background:var(--c-exp)"></i>Re-exported</span></div>
+      <div class="chart" id="annualChart"></div>
+    </div>
+    <div class="card">
+      <h2>Month by month</h2>
+      <p class="note">Cars imported and re-exported each month. Tap a point for values.</p>
+      <div class="legend"><span><i style="background:var(--c-imp)"></i>Imported</span><span><i style="background:var(--c-exp)"></i>Re-exported</span></div>
+      <div class="chart" id="monthChart"></div>
+    </div>
+    <div class="card">
+      <h2>Average import price per car</h2>
+      <p class="note">Customs value (USD) divided by number of cars, all imports.</p>
+      <div class="chart" id="priceChart" style="min-height:170px"></div>
+    </div>
+  </section>
+
+  <section id="fuel" hidden>
+    <div class="card">
+      <h2 id="fuelTitle">Imports by fuel and engine type</h2>
+      <p class="note">"Kept in Georgia" = imported minus re-exported, the best measure of local demand.</p>
+      <div class="tw"><table id="fuelTable"></table></div>
+    </div>
+    <div class="card">
+      <h2>Share of imports by fuel type, per year</h2>
+      <div class="legend" id="stackLegend"></div>
+      <div class="chart" id="stackChart"></div>
+    </div>
+    <div class="card">
+      <h2>Electric and hybrid share of imports</h2>
+      <div class="legend"><span><i style="background:var(--c-ev)"></i>Electric</span><span><i style="background:var(--c-hev)"></i>Hybrid + plug-in</span></div>
+      <div class="chart" id="shareChart" style="min-height:170px"></div>
+    </div>
+  </section>
+
+  <section id="countries" hidden>
+    <div class="card">
+      <h2 id="originTitle">Where imported cars come from</h2>
+      <div class="tw"><table id="originTable"></table></div>
+    </div>
+    <div class="card">
+      <h2 id="destTitle">Where re-exported cars go</h2>
+      <div class="tw"><table id="destTable"></table></div>
+    </div>
+  </section>
+
+  <section id="advice" hidden>
+    <div class="card">
+      <h2>Stock signals by car type</h2>
+      <p class="note" id="adviceNote">Worked out from customs data each time the app refreshes: growth of cars kept in Georgia, plus the excise rules. A rule of thumb, not financial advice.</p>
+      <div id="signals"></div>
+    </div>
+    <div class="card">
+      <h2>Buying rules after the April 2026 excise reform</h2>
+      <ul class="rules">
+        <li>Buy <b>left-hand-drive</b> cars only. Right-hand-drive cars pay 3x excise (RHD electric: flat GEL 3,000).</li>
+        <li>Petrol, diesel and hybrid cars should be <b>6 years old or younger</b> at customs clearance: GEL 1.5 per cm³ instead of GEL 4.5.</li>
+        <li>Hybrids 6 years or younger keep a <b>60% excise discount</b> (about GEL 1,200 on a 2.0 L car).</li>
+        <li>Electric cars pay <b>no excise</b> at any age.</li>
+        <li>The age cutoff seems to move one model year each January: clear older stock before the new year.</li>
+        <li>Excise is refunded if a car is re-exported within 3 months of clearance.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="brands" hidden>
+    <div class="card">
+      <h2>Top models by first registration, Jan–Sep 2026</h2>
+      <p class="note">From research compiled November 2026 (Geostat via marketentry.ge). Not updated automatically: no free live source publishes brand or model data.</p>
+      <div class="tw"><table>
+        <tr><th>Model</th><th class="n">Registrations</th></tr>
+        <tr><td>Subaru Forester</td><td class="n">3,060</td></tr>
+        <tr><td>Toyota Camry</td><td class="n">2,801</td></tr>
+        <tr><td>VW Jetta</td><td class="n">2,776</td></tr>
+        <tr><td>Tesla Model 3</td><td class="n">2,581</td></tr>
+        <tr><td>Hyundai Elantra</td><td class="n">2,154</td></tr>
+      </table></div>
+    </div>
+    <div class="card">
+      <h2>Electric registrations by brand, Q3 2026</h2>
+      <div class="tw"><table>
+        <tr><th>Brand</th><th class="n">Cars</th><th class="n">vs Q3 2025</th></tr>
+        <tr><td>Tesla</td><td class="n">2,593</td><td class="n up">+154%</td></tr>
+        <tr><td>Nissan</td><td class="n">433</td><td class="n up">+53%</td></tr>
+        <tr><td>Chevrolet</td><td class="n">190</td><td class="n up">+153%</td></tr>
+      </table></div>
+      <p class="note">MIA via BM.GE.</p>
+    </div>
+    <div class="card">
+      <h2>Most listed for sale, Jan–Mar 2026</h2>
+      <div class="tw"><table>
+        <tr><th>Model</th><th class="n">Listings</th></tr>
+        <tr><td>Toyota Camry</td><td class="n">6,000+</td></tr>
+        <tr><td>Toyota RAV4</td><td class="n">5,300+</td></tr>
+        <tr><td>BMW X5</td><td class="n">~3,000</td></tr>
+        <tr><td>Ford Fusion</td><td class="n">2,756</td></tr>
+        <tr><td>Subaru Forester</td><td class="n">2,333</td></tr>
+      </table></div>
+      <p class="note">AutoBridge. Listings include salvage and transit stock, so they are not the same as fast sales.</p>
+    </div>
+    <div class="card">
+      <h2>Excise examples (GEL)</h2>
+      <div class="tw"><table>
+        <tr><th>Car</th><th class="n">Before 2 Apr 2026</th><th class="n">Now</th></tr>
+        <tr><td>Petrol/diesel over 6 yrs, 2.0 L</td><td class="n">~1,600</td><td class="n">9,000</td></tr>
+        <tr><td>Petrol/diesel over 6 yrs, 2.5 L</td><td class="n">~2,000</td><td class="n">11,250</td></tr>
+        <tr><td>Petrol/diesel 0–6 yrs, 2.0 L</td><td class="n">~1,600–2,800</td><td class="n">3,000</td></tr>
+        <tr><td>Hybrid 0–6 yrs, 2.0 L (LHD)</td><td class="n">60% off</td><td class="n">~1,200</td></tr>
+        <tr><td>Hybrid over 6 yrs, 2.0 L</td><td class="n">~1,800</td><td class="n">~9,000</td></tr>
+        <tr><td>Electric, any age</td><td class="n">0</td><td class="n">0</td></tr>
+      </table></div>
+    </div>
+  </section>
+
+  <p class="note" style="text-align:center">Live data: <a href="https://comtradeapi.un.org/">UN Comtrade</a> (customs data reported by Geostat), about two months behind. Imports include cars later re-exported.</p>
+</main>
+
+<script>
+'use strict';
+/* ---------- constants ---------- */
+const API = 'https://comtradeapi.un.org/public/v1/preview/C/';
+const NAMES_URL = 'https://comtradeapi.un.org/files/v1/app/reference/partnerAreas.json';
+const CODES = ['8703','870321','870322','870323','870324','870331','870332','870333','870340','870350','870360','870370','870380','870390'];
+const GROUPS = [
+  {id:'pet_s', name:'Petrol ≤1.5 L', codes:['870321','870322'], color:'var(--c-pet)', stack:'pet'},
+  {id:'pet_m', name:'Petrol 1.5–3 L', codes:['870323'], color:'var(--c-pet)', stack:'pet'},
+  {id:'pet_l', name:'Petrol >3 L', codes:['870324'], color:'var(--c-pet)', stack:'pet'},
+  {id:'dsl', name:'Diesel', codes:['870331','870332','870333'], color:'var(--c-dsl)', stack:'dsl'},
+  {id:'hev', name:'Hybrid', codes:['870340','870350'], color:'var(--c-hev)', stack:'hev'},
+  {id:'phev', name:'Plug-in hybrid', codes:['870360','870370'], color:'var(--c-phev)', stack:'phev'},
+  {id:'ev', name:'Electric', codes:['870380'], color:'var(--c-ev)', stack:'ev'},
+  {id:'oth', name:'Other', codes:['870390'], color:'var(--c-oth)', stack:'oth'}
+];
+const STACKS = [
+  {id:'pet', name:'Petrol', color:'var(--c-pet)'}, {id:'dsl', name:'Diesel', color:'var(--c-dsl)'},
+  {id:'hev', name:'Hybrid', color:'var(--c-hev)'}, {id:'phev', name:'Plug-in', color:'var(--c-phev)'},
+  {id:'ev', name:'Electric', color:'var(--c-ev)'}, {id:'oth', name:'Other', color:'var(--c-oth)'}
+];
+/* excise bias: +1 favoured, -1 penalised */
+const RULES = {
+  pet_s: {bias: 0, text: 'Only 6 years or younger: GEL 1.5/cm³ (about GEL 2,250 on 1.5 L); older pays 3x.'},
+  pet_m: {bias: 0, text: 'Only 6 years or younger: about GEL 3,000 on 2.0 L; over 6 years GEL 9,000+.'},
+  pet_l: {bias: -1, text: 'Excise scales with engine size: GEL 4,500+ when young, 13,500+ when over 6 years.'},
+  dsl: {bias: -1, text: 'Same age penalty as petrol and no tax advantage.'},
+  hev: {bias: 1, text: '60% excise discount if 6 years or younger (left-hand drive).'},
+  phev: {bias: 1, text: 'Counted as hybrid: 60% discount if 6 years or younger.'},
+  ev: {bias: 1, text: 'No excise at any age. Right-hand-drive EVs pay a flat GEL 3,000.'},
+  oth: {bias: 0, text: 'Small, mixed category.'}
+};
+const FALLBACK_NAMES = {842:'USA',392:'Japan',276:'Germany',410:'South Korea',156:'China',784:'UAE',417:'Kyrgyzstan',398:'Kazakhstan',51:'Armenia',31:'Azerbaijan',762:'Tajikistan',860:'Uzbekistan',364:'Iran',498:'Moldova',643:'Russia',804:'Ukraine',795:'Turkmenistan',112:'Belarus',792:'Türkiye',124:'Canada',826:'United Kingdom',250:'France',380:'Italy',528:'Netherlands',56:'Belgium',616:'Poland',203:'Czechia',40:'Austria',752:'Sweden',724:'Spain',8:'Albania',36:'Australia',100:'Bulgaria',642:'Romania',348:'Hungary',440:'Lithuania',428:'Latvia',233:'Estonia',756:'Switzerland',344:'Hong Kong',702:'Singapore',682:'Saudi Arabia',368:'Iraq',4:'Afghanistan',496:'Mongolia'};
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+/* ---------- storage ---------- */
+const KEY = 'gcm_store_v1';
+let store = {annual:{}, monthly:{}, partners:null, names:null, updated:null};
+try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.annual) store = Object.assign(store, s); } catch (e) {}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) {} }
+
+/* ---------- networking (through the Android app, or fetch in a browser) ---------- */
+let seq = 0; const pending = {};
+window.__nativeDone = (id, code, body) => { const p = pending[id]; if (p) { delete pending[id]; p({code, body}); } };
+function rawGet(url) {
+  if (window.Native && Native.get) return new Promise((res) => { const id = 'r' + (++seq); pending[id] = res; Native.get(id, url); });
+  return fetch(url).then(async (r) => ({code: r.status, body: await r.text()})).catch((e) => ({code: -1, body: String(e)}));
+}
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function getJson(url) {
+  for (let i = 0; i < 6; i++) {
+    const r = await rawGet(url);
+    if (r.code === 429) { await sleep(2500 + i * 1500); continue; }
+    if (r.code !== 200) throw new Error(r.code === -1 ? 'No connection (' + r.body + ')' : 'Data service error ' + r.code);
+    await sleep(1100);
+    return JSON.parse(r.body);
+  }
+  throw new Error('The data service is busy. Try Refresh in a minute.');
+}
+async function trade(freq, period, extra) {
+  const url = API + freq + '/HS?reporterCode=268&period=' + period + '&flowCode=M,X' + extra;
+  const j = await getJson(url);
+  if (j.error) throw new Error(j.error);
+  return j.data || [];
+}
+function pack(rows) {
+  const o = {M:{}, X:{}};
+  rows.forEach((r) => { if (o[r.flowCode]) o[r.flowCode][r.cmdCode] = {q: r.qty || 0, v: r.primaryValue || 0}; });
+  return o;
+}
+const hasData = (p) => !!(p && p.M && p.M['8703'] && p.M['8703'].v > 0);
+
+/* ---------- sync ---------- */
+let busy = false;
+async function sync(force) {
+  if (busy) return; busy = true;
+  const btn = document.getElementById('refresh'); btn.disabled = true;
+  showError('');
+  const now = new Date(), cy = now.getFullYear(), cm = now.getMonth() + 1;
+  const jobs = [];
+  for (let y = 2019; y <= cy - 1; y++) {
+    if (!hasData(store.annual[y]) || (force && y >= cy - 2)) jobs.push({kind: 'A', y});
+  }
+  const startYear = cm <= 3 ? cy - 2 : cy - 1;
+  for (let y = startYear; y <= cy; y++) {
+    for (let m = 1; m <= 12; m++) {
+      if (y === cy && m >= cm) break;
+      const k = y + String(m).padStart(2, '0');
+      const recent = (cy * 12 + cm) - (y * 12 + m) <= 4;
+      if (!hasData(store.monthly[k]) || (force && recent)) jobs.push({kind: 'M', k});
+    }
+  }
+  if (!store.names) jobs.push({kind: 'N'});
+  jobs.push({kind: 'P'});
+  let done = 0, failed = null;
+  setBar(0.02);
+  for (const job of jobs) {
+    try {
+      if (job.kind === 'A') {
+        setStatus('Downloading ' + job.y + '…');
+        const p = pack(await trade('A', job.y, '&partnerCode=0&cmdCode=' + CODES.join(',')));
+        if (hasData(p)) store.annual[job.y] = p;
+      } else if (job.kind === 'M') {
+        setStatus('Downloading ' + MON[+job.k.slice(4) - 1] + ' ' + job.k.slice(0, 4) + '…');
+        const p = pack(await trade('M', job.k, '&partnerCode=0&cmdCode=' + CODES.join(',')));
+        if (hasData(p)) store.monthly[job.k] = p; else delete store.monthly[job.k];
+      } else if (job.kind === 'N') {
+        setStatus('Downloading country names…');
+        const j = await getJson(NAMES_URL);
+        const names = {};
+        (j.results || []).forEach((r) => { names[r.id] = {n: r.text, g: !!r.isGroup}; });
+        store.names = names;
+      } else if (job.kind === 'P') {
+        const y = latestFullYear();
+        if (y && (force || !store.partners || store.partners.year !== y)) {
+          setStatus('Downloading countries for ' + y + '…');
+          const rows = await trade('A', y, '&cmdCode=8703');
+          store.partners = {year: y, rows: rows.filter((r) => r.partnerCode !== 0).map((r) => ({f: r.flowCode, c: r.partnerCode, q: r.qty || 0, v: r.primaryValue || 0}))};
+        }
+      }
+      save();
+    } catch (e) { failed = e; break; }
+    done++; setBar(done / jobs.length);
+    if (job.kind === 'A' || done % 4 === 0) render();
+  }
+  if (!failed) { store.updated = new Date().toISOString(); save(); }
+  setBar(0);
+  btn.disabled = false; busy = false;
+  render();
+  if (failed) showError(failed.message + (hasAny() ? ' Showing saved data.' : ''));
+}
+function hasAny() { return Object.keys(store.monthly).length > 0 || Object.keys(store.annual).length > 0; }
+
+/* ---------- data helpers ---------- */
+function sumP(list) {
+  const o = {M:{}, X:{}};
+  list.forEach((p) => ['M','X'].forEach((f) => Object.keys(p[f] || {}).forEach((c) => {
+    const a = o[f][c] || (o[f][c] = {q: 0, v: 0}); a.q += p[f][c].q; a.v += p[f][c].v;
+  })));
+  return o;
+}
+function monthsOf(y, upTo) { const out = []; for (let m = 1; m <= (upTo || 12); m++) { const p = store.monthly[y + String(m).padStart(2, '0')]; if (!hasData(p)) return null; out.push(p); } return out; }
+function yearData(y) {
+  if (hasData(store.annual[y])) return store.annual[y];
+  const ms = monthsOf(y, 12); return ms ? sumP(ms) : null;
+}
+function latestFullYear() { const cy = new Date().getFullYear(); for (let y = cy - 1; y >= 2019; y--) if (yearData(y)) return y; return null; }
+function latestMonth() { const ks = Object.keys(store.monthly).filter((k) => hasData(store.monthly[k])).sort(); return ks.length ? ks[ks.length - 1] : null; }
+function tot(p, f) { if (!p) return {q: 0, v: 0}; const t = p[f]['8703']; if (t) return t; return GROUPS.reduce((a, g) => { const s = grp(p, f, g); return {q: a.q + s.q, v: a.v + s.v}; }, {q: 0, v: 0}); }
+function grp(p, f, g) { const o = {q: 0, v: 0}; if (!p) return o; g.codes.forEach((c) => { const x = p[f][c]; if (x) { o.q += x.q; o.v += x.v; } }); return o; }
+function stackOf(p, sid) { return GROUPS.filter((g) => g.stack === sid).reduce((a, g) => a + grp(p, 'M', g).q, 0); }
+
+/* The current comparison window: latest year's months so far vs the same months a year earlier. */
+function windowInfo() {
+  const lm = latestMonth();
+  if (!lm) {
+    const fy = latestFullYear(); if (!fy) return null;
+    return {label: String(fy), prevLabel: String(fy - 1), cur: yearData(fy), prev: yearData(fy - 1), year: fy, full: true};
+  }
+  const y = +lm.slice(0, 4), m = +lm.slice(4);
+  const cur = monthsOf(y, m), prev = monthsOf(y - 1, m);
+  if (m === 12 || !cur) {
+    return {label: String(y), prevLabel: String(y - 1), cur: yearData(y), prev: yearData(y - 1), year: y, full: true};
+  }
+  const span = m === 1 ? 'Jan' : 'Jan–' + MON[m - 1];
+  return {label: span + ' ' + y, prevLabel: span + ' ' + (y - 1), cur: sumP(cur), prev: prev ? sumP(prev) : null, year: y, month: m, full: false};
+}
+
+/* ---------- formatting ---------- */
+const fN = (n) => n == null || isNaN(n) ? '–' : Math.round(n).toLocaleString('en-US');
+function fK(n) { if (n == null || isNaN(n)) return '–'; const a = Math.abs(n); if (a >= 1e9) return (n / 1e9).toFixed(2) + 'bn'; if (a >= 1e6) return (n / 1e6).toFixed(a >= 1e8 ? 0 : 1) + 'M'; if (a >= 1e4) return Math.round(n / 1e3) + 'k'; if (a >= 1e3) return (n / 1e3).toFixed(1) + 'k'; return String(Math.round(n)); }
+const fUsd = (n) => '$' + fK(n);
+function pct(a, b) { return b ? (a / b - 1) * 100 : null; }
+function chg(v, unit) { if (v == null || !isFinite(v)) return {t: '', c: 'flat'}; const s = v > 0 ? '+' : v < 0 ? '−' : ''; return {t: s + Math.abs(v).toFixed(Math.abs(v) < 10 && unit === 'pp' ? 1 : (Math.abs(v) < 10 ? 1 : 0)) + (unit || '%'), c: v > 0.5 ? 'up' : v < -0.5 ? 'down' : 'flat'}; }
+
+/* ---------- UI helpers ---------- */
+function setStatus(s) { document.getElementById('status').textContent = s; }
+function setBar(f) { document.getElementById('bar').style.width = (f * 100).toFixed(0) + '%'; }
+function showError(s) { const e = document.getElementById('error'); e.textContent = s; e.hidden = !s; }
+function h(tag, attrs, kids) { const e = document.createElement(tag); if (attrs) for (const k in attrs) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'cls') e.className = attrs[k]; else e.setAttribute(k, attrs[k]); } (kids || []).forEach((k) => k && e.appendChild(k)); return e; }
+const NS = 'http://www.w3.org/2000/svg';
+function s(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+function st(parent, x, y, t, cls, anchor) { const e = s('text', {x, y, 'text-anchor': anchor || 'start'}, parent); if (cls) e.setAttribute('class', cls); e.textContent = t; return e; }
+function niceMax(v) { if (!(v > 0)) return 1; const p = Math.pow(10, Math.floor(Math.log10(v))); for (const m of [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (m * p >= v) return m * p; return 10 * p; }
+function tipper(box) {
+  const t = h('div', {cls: 'tip'}); t.hidden = true; box.appendChild(t);
+  function show(ev, title, lines) {
+    t.replaceChildren(h('b', {text: title}), ...lines.map((l) => h('div', {text: l})));
+    t.hidden = false;
+    const r = box.getBoundingClientRect();
+    let x = ev.clientX - r.left + 10, y = ev.clientY - r.top - 10 - t.offsetHeight;
+    if (x + t.offsetWidth > r.width) x = Math.max(0, r.width - t.offsetWidth);
+    if (y < 0) y = ev.clientY - r.top + 14;
+    t.style.left = x + 'px'; t.style.top = y + 'px';
+  }
+  box.addEventListener('pointerleave', () => { t.hidden = true; });
+  return {show, hide: () => { t.hidden = true; }};
+}
+function bind(elm, tip, title, lines) {
+  elm.addEventListener('pointerdown', (ev) => tip.show(ev, title, lines));
+  elm.addEventListener('pointermove', (ev) => tip.show(ev, title, lines));
+}
+
+/* ---------- charts ---------- */
+function barChart(box, cats, series, fmt) {
+  box.replaceChildren();
+  if (!cats.length) { box.appendChild(h('div', {cls: 'empty', text: 'No data yet.'})); return; }
+  const W = Math.max(280, box.clientWidth), H = 220, L = 40, R = 6, T = 16, B = 24;
+  const svg = s('svg', {viewBox: `0 0 ${W} ${H}`, height: H, role: 'img'}, box);
+  const max = niceMax(Math.max(...series.flatMap((se) => se.values.map((v) => v || 0))));
+  const y = (v) => T + (H - T - B) * (1 - v / max);
+  const g = s('g', {class: 'grid'}, svg);
+  for (let i = 0; i <= 4; i++) { const v = max * i / 4; s('line', {x1: L, x2: W - R, y1: y(v), y2: y(v)}, g); st(svg, L - 6, y(v) + 4, fK(v), '', 'end'); }
+  const band = (W - L - R) / cats.length, bw = Math.min(26, (band - 8) / series.length);
+  const tip = tipper(box);
+  cats.forEach((c, i) => {
+    const x0 = L + band * i + (band - bw * series.length) / 2;
+    series.forEach((se, j) => {
+      const v = se.values[i]; if (v == null) return;
+      const r = s('rect', {x: x0 + j * bw, y: y(v), width: Math.max(1, bw - 2), height: Math.max(0, y(0) - y(v)), rx: 2, fill: se.color, opacity: se.faded && se.faded[i] ? 0.55 : 1}, svg);
+      bind(r, tip, c + ' · ' + se.name, [fmt(v)].concat(se.extra ? se.extra(i) : []));
+    });
+    st(svg, L + band * i + band / 2, H - 6, c, '', 'middle');
+  });
+  if (series[0] && series[0].labelTop) cats.forEach((c, i) => { const v = series[0].values[i]; if (v != null && band > 34) st(svg, L + band * i + (band - bw * series.length) / 2 + bw / 2, y(v) - 4, fK(v), 'val', 'middle'); });
+  svg.setAttribute('aria-label', series.map((se) => se.name + ': ' + cats.map((c, i) => c + ' ' + fmt(se.values[i])).join(', ')).join('; '));
+}
+function lineChart(box, labels, series, fmt, opt) {
+  box.replaceChildren();
+  if (labels.length < 2) { box.appendChild(h('div', {cls: 'empty', text: 'Not enough months yet.'})); return; }
+  opt = opt || {};
+  const W = Math.max(280, box.clientWidth), H = opt.h || 210, L = 44, R = 10, T = 12, B = 24;
+  const svg = s('svg', {viewBox: `0 0 ${W} ${H}`, height: H, role: 'img'}, box);
+  const vals = series.flatMap((se) => se.values.filter((v) => v != null));
+  const max = niceMax(Math.max(...vals)), min = opt.zero === false ? Math.floor(Math.min(...vals) / (max / 10)) * (max / 10) : 0;
+  const y = (v) => T + (H - T - B) * (1 - (v - min) / (max - min || 1));
+  const x = (i) => L + (W - L - R) * i / (labels.length - 1);
+  const g = s('g', {class: 'grid'}, svg);
+  for (let i = 0; i <= 4; i++) { const v = min + (max - min) * i / 4; s('line', {x1: L, x2: W - R, y1: y(v), y2: y(v)}, g); st(svg, L - 6, y(v) + 4, opt.tick ? opt.tick(v) : fK(v), '', 'end'); }
+  const every = Math.ceil(labels.length / Math.max(2, Math.floor((W - L) / 52)));
+  labels.forEach((l, i) => { if (i % every === 0 || i === labels.length - 1) st(svg, x(i), H - 6, l, '', 'middle'); });
+  const tip = tipper(box);
+  series.forEach((se) => {
+    let d = '';
+    se.values.forEach((v, i) => { if (v == null) return; d += (d ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(v).toFixed(1); });
+    s('path', {d, fill: 'none', stroke: se.color, 'stroke-width': 2.2, 'stroke-linejoin': 'round'}, svg);
+    se.values.forEach((v, i) => {
+      if (v == null) return;
+      const last = i === se.values.length - 1;
+      const c = s('circle', {cx: x(i), cy: y(v), r: last ? 4 : 2.5, fill: se.color}, svg);
+      const hit = s('circle', {cx: x(i), cy: y(v), r: 12, fill: 'transparent'}, svg);
+      bind(hit, tip, labels[i] + ' · ' + se.name, [fmt(v)]);
+      if (last) st(svg, x(i) - 6, y(v) - 8, opt.tick ? opt.tick(v) : fK(v), 'val', 'end');
+    });
+  });
+  svg.setAttribute('aria-label', series.map((se) => se.name).join(' and ') + ' from ' + labels[0] + ' to ' + labels[labels.length - 1]);
+}
+function stackChart(box, cats, rows) {
+  box.replaceChildren();
+  if (!cats.length) { box.appendChild(h('div', {cls: 'empty', text: 'No data yet.'})); return; }
+  const W = Math.max(280, box.clientWidth), bh = 22, gap = 10, L = 62, H = cats.length * (bh + gap);
+  const svg = s('svg', {viewBox: `0 0 ${W} ${H}`, height: H, role: 'img', 'aria-label': 'Share of imports by fuel type per year'}, box);
+  const tip = tipper(box);
+  rows.forEach((r, i) => {
+    const total = STACKS.reduce((a, k) => a + (r[k.id] || 0), 0) || 1;
+    const yy = i * (bh + gap);
+    st(svg, 0, yy + bh / 2 + 4, cats[i]);
+    let acc = 0;
+    STACKS.forEach((k) => {
+      const v = r[k.id] || 0; if (!v) return;
+      const w = (W - L) * v / total, sh = v / total * 100;
+      const rect = s('rect', {x: L + acc, y: yy, width: Math.max(0, w - 1), height: bh, fill: k.color}, svg);
+      bind(rect, tip, cats[i] + ' · ' + k.name, [sh.toFixed(1) + '% of imports', fN(v) + ' cars']);
+      if (w > 30) { const t = st(svg, L + acc + w / 2, yy + bh / 2 + 4, Math.round(sh) + '%', 'val', 'middle'); t.setAttribute('style', 'fill:#fff;pointer-events:none'); }
+      acc += w;
+    });
+  });
+}
+
+/* ---------- render ---------- */
+function render() {
+  const w = windowInfo();
+  const lm = latestMonth();
+  const upd = store.updated ? new Date(store.updated) : null;
+  if (!busy || !hasAny()) setStatus(hasAny()
+    ? 'Data to ' + (lm ? MON[+lm.slice(4) - 1] + ' ' + lm.slice(0, 4) : (latestFullYear() || '')) + (upd ? ' · checked ' + upd.toLocaleDateString('en-GB', {day: 'numeric', month: 'short'}) + ' ' + upd.toTimeString().slice(0, 5) : '')
+    : 'No data yet. Connect to the internet and tap Refresh.');
+  if (!w) return;
+  renderOverview(w); renderFuel(w); renderCountries(); renderAdvice(w);
+}
+
+function renderOverview(w) {
+  const cm = tot(w.cur, 'M'), cx = tot(w.cur, 'X'), pm = tot(w.prev, 'M'), px = tot(w.prev, 'X');
+  const evC = grp(w.cur, 'M', GROUPS[6]).q / (cm.q || 1) * 100, evP = w.prev ? grp(w.prev, 'M', GROUPS[6]).q / (pm.q || 1) * 100 : null;
+  const hyC = (grp(w.cur, 'M', GROUPS[4]).q + grp(w.cur, 'M', GROUPS[5]).q) / (cm.q || 1) * 100;
+  const hyP = w.prev ? (grp(w.prev, 'M', GROUPS[4]).q + grp(w.prev, 'M', GROUPS[5]).q) / (pm.q || 1) * 100 : null;
+  const k = [
+    ['Cars imported', fN(cm.q), chg(pct(cm.q, pm.q))],
+    ['Import value', fUsd(cm.v), chg(pct(cm.v, pm.v))],
+    ['Cars re-exported', fN(cx.q), chg(pct(cx.q, px.q))],
+    ['Kept in Georgia', fN(cm.q - cx.q), chg(pct(cm.q - cx.q, pm.q - px.q))],
+    ['Avg import price', '$' + fN(cm.v / (cm.q || 1)), chg(pct(cm.v / (cm.q || 1), pm.v / (pm.q || 1)))],
+    ['Re-export value', fUsd(cx.v), chg(pct(cx.v, px.v))],
+    ['Electric share', evC.toFixed(1) + '%', chg(evP == null ? null : evC - evP, ' pp')],
+    ['Hybrid share', hyC.toFixed(1) + '%', chg(hyP == null ? null : hyC - hyP, ' pp')]
+  ];
+  const box = document.getElementById('kpis');
+  box.replaceChildren(...k.map(([l, v, c]) => h('div', {cls: 'kpi'}, [h('div', {cls: 'l', text: l + ', ' + w.label}), h('div', {cls: 'v', text: v}), h('div', {cls: 'c ' + c.c, text: c.t ? c.t + ' vs ' + w.prevLabel : ''})])));
+
+  const cy = new Date().getFullYear(), cats = [], im = [], ex = [], faded = [];
+  for (let y = 2019; y <= cy; y++) {
+    let p = yearData(y), lab = String(y), part = false;
+    if (!p && w && !w.full && y === w.year) { p = w.cur; lab = y + '*'; part = true; }
+    if (!p) continue;
+    cats.push(lab); im.push(tot(p, 'M').q); ex.push(tot(p, 'X').q); faded.push(part);
+  }
+  document.getElementById('annualNote').textContent = 'Number of passenger cars.' + (w && !w.full ? ' * = ' + w.label + ' only.' : '');
+  barChart(document.getElementById('annualChart'), cats, [
+    {name: 'Imported', color: 'var(--c-imp)', values: im, faded, labelTop: true},
+    {name: 'Re-exported', color: 'var(--c-exp)', values: ex, faded}
+  ], (v) => fN(v) + ' cars');
+
+  const ks = Object.keys(store.monthly).filter((k2) => hasData(store.monthly[k2])).sort().slice(-24);
+  const labs = ks.map((k2) => MON[+k2.slice(4) - 1] + ' ' + k2.slice(2, 4));
+  lineChart(document.getElementById('monthChart'), labs, [
+    {name: 'Imported', color: 'var(--c-imp)', values: ks.map((k2) => tot(store.monthly[k2], 'M').q)},
+    {name: 'Re-exported', color: 'var(--c-exp)', values: ks.map((k2) => tot(store.monthly[k2], 'X').q)}
+  ], (v) => fN(v) + ' cars');
+  const pc = [], pv = [];
+  for (let y = 2019; y <= cy; y++) { let p = yearData(y), lab = String(y); if (!p && w && !w.full && y === w.year) { p = w.cur; lab = y + '*'; } if (!p) continue; const t = tot(p, 'M'); if (t.q) { pc.push(lab); pv.push(t.v / t.q); } }
+  lineChart(document.getElementById('priceChart'), pc, [{name: 'Average import price', color: 'var(--gold)', values: pv}], (v) => '$' + fN(v), {h: 170, zero: false, tick: (v) => '$' + fK(v)});
+}
+
+function renderFuel(w) {
+  document.getElementById('fuelTitle').textContent = 'Imports by fuel and engine type, ' + w.label;
+  const cm = tot(w.cur, 'M');
+  const t = document.getElementById('fuelTable');
+  const head = h('tr', null, ['Type', 'Imported', 'Share', 'vs ' + w.prevLabel, 'Kept in GE', 'Avg price'].map((x, i) => h('th', {cls: i ? 'n' : '', text: x})));
+  const rows = GROUPS.map((g) => {
+    const a = grp(w.cur, 'M', g), x = grp(w.cur, 'X', g), pa = grp(w.prev, 'M', g);
+    const c = chg(w.prev ? pct(a.q, pa.q) : null);
+    return h('tr', null, [
+      h('td', {style: 'white-space:nowrap'}, [h('span', {style: 'display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;background:' + g.color}), document.createTextNode(g.name)]),
+      h('td', {cls: 'n', text: fN(a.q)}), h('td', {cls: 'n', text: (a.q / (cm.q || 1) * 100).toFixed(1) + '%'}),
+      h('td', {cls: 'n ' + c.c, text: c.t || '–'}), h('td', {cls: 'n', text: fN(a.q - x.q)}),
+      h('td', {cls: 'n', text: a.q ? '$' + fN(a.v / a.q) : '–'})
+    ]);
+  });
+  t.replaceChildren(head, ...rows);
+
+  document.getElementById('stackLegend').replaceChildren(...STACKS.map((k) => h('span', null, [h('i', {style: 'background:' + k.color}), document.createTextNode(k.name)])));
+  const cy = new Date().getFullYear(), cats = [], data = [], ev = [], hy = [];
+  for (let y = 2019; y <= cy; y++) {
+    let p = yearData(y), lab = String(y);
+    if (!p && !w.full && y === w.year) { p = w.cur; lab = y + '*'; }
+    if (!p) continue;
+    const r = {}; STACKS.forEach((k) => { r[k.id] = stackOf(p, k.id); });
+    const total = tot(p, 'M').q || 1;
+    cats.push(lab); data.push(r); ev.push(r.ev / total * 100); hy.push((r.hev + r.phev) / total * 100);
+  }
+  stackChart(document.getElementById('stackChart'), cats, data);
+  lineChart(document.getElementById('shareChart'), cats, [
+    {name: 'Electric', color: 'var(--c-ev)', values: ev}, {name: 'Hybrid + plug-in', color: 'var(--c-hev)', values: hy}
+  ], (v) => v.toFixed(1) + '%', {h: 170, tick: (v) => Math.round(v) + '%'});
+}
+
+function pname(c) { const n = store.names && store.names[c]; return n ? n.n : (FALLBACK_NAMES[c] || 'Code ' + c); }
+function isGroup(c) { const n = store.names && store.names[c]; return n ? n.g : false; }
+function renderCountries() {
+  const P = store.partners;
+  const oT = document.getElementById('originTable'), dT = document.getElementById('destTable');
+  if (!P) { oT.replaceChildren(h('tr', null, [h('td', {cls: 'empty', text: 'Tap Refresh to download country data.'})])); dT.replaceChildren(); return; }
+  document.getElementById('originTitle').textContent = 'Where imported cars come from, ' + P.year;
+  document.getElementById('destTitle').textContent = 'Where re-exported cars go, ' + P.year;
+  const fill = (tbl, flow) => {
+    const rows = P.rows.filter((r) => r.f === flow && !isGroup(r.c)).sort((a, b) => b.v - a.v);
+    const total = rows.reduce((a, r) => a + r.v, 0) || 1;
+    tbl.replaceChildren(h('tr', null, ['Country', 'Cars', 'Value', 'Share', 'Avg car'].map((x, i) => h('th', {cls: i ? 'n' : '', text: x}))),
+      ...rows.slice(0, 12).map((r) => h('tr', null, [
+        h('td', {text: pname(r.c)}), h('td', {cls: 'n', text: fN(r.q)}), h('td', {cls: 'n', text: fUsd(r.v)}),
+        h('td', {cls: 'n', text: (r.v / total * 100).toFixed(1) + '%'}), h('td', {cls: 'n', text: r.q ? '$' + fN(r.v / r.q) : '–'})
+      ])));
+  };
+  fill(oT, 'M'); fill(dT, 'X');
+}
+
+function renderAdvice(w) {
+  document.getElementById('adviceNote').textContent = 'Based on ' + w.label + ' vs ' + w.prevLabel + ': growth of cars kept in Georgia (imported minus re-exported), plus the excise rules. Worked out on your phone from customs data each refresh. A rule of thumb, not financial advice.';
+  const cm = tot(w.cur, 'M'), pm = tot(w.prev, 'M');
+  const items = GROUPS.filter((g) => g.id !== 'oth').map((g) => {
+    const a = grp(w.cur, 'M', g), x = grp(w.cur, 'X', g), pa = grp(w.prev, 'M', g), px = grp(w.prev, 'X', g);
+    const kept = a.q - x.q, keptP = pa.q - px.q;
+    const growth = w.prev && keptP > 0 ? pct(kept, keptP) : null;
+    const share = a.q / (cm.q || 1) * 100, shareP = w.prev ? pa.q / (pm.q || 1) * 100 : null;
+    const rule = RULES[g.id];
+    let sig = 'Hold';
+    const gr = growth == null ? 0 : growth;
+    if (gr >= 10 || (rule.bias > 0 && gr >= -5)) sig = 'Add';
+    if (gr <= -10 || (rule.bias < 0 && gr < 5)) sig = 'Reduce';
+    if (rule.bias > 0 && gr <= -20) sig = 'Hold';
+    return {g, sig, growth, kept, share, shareP, rule, score: (sig === 'Add' ? 2 : sig === 'Hold' ? 1 : 0) * 1000 + gr};
+  }).sort((a, b) => b.score - a.score);
+  const color = {Add: 'var(--ok)', Hold: 'var(--warn)', Reduce: 'var(--bad)'};
+  document.getElementById('signals').replaceChildren(...items.map((it) => {
+    const gc = chg(it.growth), sc = chg(it.shareP == null ? null : it.share - it.shareP, ' pp');
+    const facts = 'Kept in Georgia: ' + fN(it.kept) + (gc.t ? ' (' + gc.t + ')' : '') + ' · share of imports ' + it.share.toFixed(1) + '%' + (sc.t ? ' (' + sc.t + ')' : '') + '.';
+    return h('div', {cls: 'sig'}, [
+      h('div', {cls: 'h'}, [h('span', {cls: 'pill', style: 'color:' + color[it.sig], text: it.sig}), document.createTextNode(it.g.name)]),
+      h('p', {text: facts}), h('p', {text: 'Excise: ' + it.rule.text})
+    ]);
+  }));
+}
+
+/* ---------- tabs and start ---------- */
+document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('#tabs button').forEach((x) => x.classList.toggle('on', x === b));
+  document.querySelectorAll('main > section').forEach((sec) => { sec.hidden = sec.id !== b.dataset.tab; });
+  window.scrollTo(0, 0);
+  render();
+}));
+document.getElementById('refresh').addEventListener('click', () => sync(true));
+let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(render, 200); });
+render();
+const age = store.updated ? (Date.now() - new Date(store.updated).getTime()) / 864e5 : 99;
+if (!hasAny() || age > 3) sync(false);
+</script>
+</body>
+</html>
